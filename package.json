@@ -1,20 +1,24 @@
 {
   "name": "pocket-ai-research",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "An AI assistant that runs entirely on your device and keeps working offline.",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "android:sync": "npm run build && cap sync android"
+    "android:sync": "npm run build && cap sync android",
+    "maps:download": "gh release download map-data --pattern \"*.pmtiles\" --dir public/maps --clobber"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.0",
     "@capacitor/core": "^8.6.0",
+    "@protomaps/basemaps": "^5.7.2",
     "@wllama/wllama": "^3.8.1",
     "idb": "^8.0.4",
+    "maplibre-gl": "^6.16.0",
+    "pmtiles": "^4.5.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-markdown": "^10.1.0",

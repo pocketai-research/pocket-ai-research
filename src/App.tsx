@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { deleteModel, describeError, listDownloadedUrls, loadModel, type LoadedModel } from './ai/engine'
 import { MODELS, type ModelOption } from './ai/models'
 import ChatView from './ChatView'
@@ -19,6 +19,9 @@ import {
   type EngineSettings,
 } from './settings'
 import SetupView, { type LoadingState } from './SetupView'
+
+// MapLibre is large, so the map only loads when it is opened.
+const MapView = lazy(() => import('./map/MapView'))
 
 /**
  * If the app died last time while a model was loading or replying (usually out of memory, or a
@@ -57,7 +60,8 @@ export default function App() {
   const [downloaded, setDownloaded] = useState<Set<string> | null>(null)
   const [loading, setLoading] = useState<LoadingState | null>(null)
   const [active, setActive] = useState<LoadedModel | null>(null)
-  const [view, setView] = useState<'setup' | 'chat'>('setup')
+  const [view, setView] = useState<'setup' | 'chat' | 'map'>('setup')
+  const [viewBeforeMap, setViewBeforeMap] = useState<'setup' | 'chat'>('setup')
   const [chatMeta, setChatMeta] = useState(newChatMeta)
   const [messages, setMessages] = useState<ChatEntry[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -162,6 +166,19 @@ export default function App() {
     refreshDownloaded()
   }
 
+  function showMap() {
+    setViewBeforeMap(view === 'chat' ? 'chat' : 'setup')
+    setView('map')
+  }
+
+  if (view === 'map') {
+    return (
+      <Suspense fallback={<p className="container section-intro">Loading map…</p>}>
+        <MapView onBack={() => setView(viewBeforeMap)} />
+      </Suspense>
+    )
+  }
+
   if (view === 'chat' && active) {
     return (
       <ChatView
@@ -170,6 +187,7 @@ export default function App() {
         messages={messages}
         setMessages={setMessages}
         onShowModels={() => setView('setup')}
+        onShowMap={showMap}
         onNewChat={startNewChat}
         onOpenChat={openConversation}
         onDeleteChat={removeConversation}
@@ -190,6 +208,7 @@ export default function App() {
       onOpen={openModel}
       onDelete={removeModel}
       onBackToChat={active ? () => setView('chat') : undefined}
+      onShowMap={showMap}
     />
   )
 }

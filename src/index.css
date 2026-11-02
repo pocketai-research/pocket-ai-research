@@ -725,6 +725,57 @@ h2 {
   color: var(--muted);
 }
 
+/* Offline map */
+.map-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.map-title {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.map-title span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.map-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Two classes so it beats MapLibre's own `.maplibregl-map { position: relative }`. */
+.map-area .map-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.map-overlay {
+  position: absolute;
+  bottom: calc(40px + env(safe-area-inset-bottom));
+  left: 50%;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 8px 14px;
+  transform: translateX(-50%);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.15);
+  font-size: 14px;
+  text-align: center;
+}
+
+.map-area .maplibregl-ctrl-bottom-left,
+.map-area .maplibregl-ctrl-bottom-right {
+  margin-bottom: env(safe-area-inset-bottom);
+}
+
 @media (max-width: 560px) {
   .chat-layout .brand span {
     display: none;

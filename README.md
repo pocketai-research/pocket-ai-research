@@ -37,6 +37,22 @@ Requirements: Android 7.0 or newer, at least 4 GB RAM, and 0.5 to 1.1 GB of free
 
 Models are downloaded from Hugging Face on first use and kept in the app's private storage (the browser's Origin Private File System).
 
+## Offline map
+
+The app includes an offline map of **Yogyakarta** with your GPS position. It needs no internet and no AI model: the map pack ships inside the APK.
+
+- Map data comes from [OpenStreetMap](https://www.openstreetmap.org/copyright) (© OpenStreetMap contributors, ODbL), cut from the [Protomaps](https://protomaps.com) daily planet build into a [PMTiles](https://docs.protomaps.com/pmtiles/) file (about 22 MB).
+- [MapLibre GL JS](https://maplibre.org) draws the map. Fonts (Noto Sans, SIL Open Font License) and icons (MIT) are bundled in [public/map-assets](public/map-assets).
+- The app reads the whole map pack into memory instead of using HTTP range requests, because the Android app's local server does not honour ranges.
+
+Add or change a region:
+
+1. Edit [src/map/regions.json](src/map/regions.json) (`bbox` is west, south, east, north).
+2. Run the **Map data** workflow on GitHub (Actions → Map data → Run workflow). It cuts each region and uploads it to the `map-data` release.
+3. Push to `main` or tag a release: the builds download the map packs from that release.
+
+For local development, run `npm run maps:download` once (needs the GitHub CLI) to put the packs in `public/maps/`.
+
 ## How it works
 
 - One codebase: a Vite + React + TypeScript web app. [Capacitor](https://capacitorjs.com) wraps the same app as an Android APK.
@@ -51,7 +67,8 @@ See [docs/CONCEPT.md](docs/CONCEPT.md) for the full concept and usage guide.
 Requirements: Node.js 24 or newer.
 
 ```bash
-npm install      # install dependencies
+npm install            # install dependencies
+npm run maps:download  # fetch the offline map packs into public/maps/
 npm run dev      # start the dev server at http://localhost:5173
 npm run build    # type-check and build to dist/
 npm run preview  # serve the production build locally
@@ -71,6 +88,7 @@ npx cap open android   # open the project in Android Studio
 | [deploy.yml](.github/workflows/deploy.yml) | Push to `main` | Web version published to GitHub Pages |
 | [android.yml](.github/workflows/android.yml) | Push a tag such as `v0.2.0` | Signed APK attached to a new GitHub Release |
 | [android.yml](.github/workflows/android.yml) | Run manually | APK uploaded as a workflow artifact |
+| [map-data.yml](.github/workflows/map-data.yml) | Run manually | Offline map packs uploaded to the `map-data` release |
 
 Publish a new Android version:
 
@@ -96,6 +114,9 @@ Keep the keystore and its password backed up outside the repository. Never commi
 - [x] **Phase 1**: project setup and automatic deployment
 - [x] **Phase 2**: on-device AI chat with a model picker, Android app
 - [x] **Phase 3a**: saved conversations and Markdown-formatted replies
+- [x] **AI Map 1**: offline map of Yogyakarta with GPS position
+- [ ] **AI Map 2**: search places offline and ask the AI about them ("nearest hospital?")
+- [ ] **AI Map 3**: offline directions drawn on the map and explained by the AI
 - [ ] **Phase 3b**: installable offline web app (PWA) and multi-threading on GitHub Pages
 - [ ] **Phase 4**: custom domain and design polish
 - [ ] **Phase 5**: ask your documents, task templates, voice input

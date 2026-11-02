@@ -3,6 +3,7 @@ import type { ModelOption } from './ai/models'
 import Brand, { REPO_URL } from './Brand'
 import { hasWebGPU } from './deviceCheck'
 import DeviceChecks from './DeviceChecks'
+import { REGIONS } from './map/regions'
 import type { EngineSettings } from './settings'
 
 export interface LoadingState {
@@ -22,6 +23,7 @@ interface SetupViewProps {
   onOpen: (model: ModelOption) => void
   onDelete: (model: ModelOption) => void
   onBackToChat?: () => void
+  onShowMap: () => void
 }
 
 function LoadingProgress({ progress, cached }: { progress: number; cached: boolean }) {
@@ -41,8 +43,8 @@ function LoadingProgress({ progress, cached }: { progress: number; cached: boole
 }
 
 export default function SetupView(props: SetupViewProps) {
-  const { models, downloaded, loading, activeId, error, notice, settings, onSettingsChange, onOpen, onDelete, onBackToChat } =
-    props
+  const { models, downloaded, loading, activeId, error, notice, settings, onSettingsChange, onOpen, onDelete } = props
+  const { onBackToChat, onShowMap } = props
   const [gpuAvailable, setGpuAvailable] = useState(false)
 
   useEffect(() => {
@@ -59,7 +61,7 @@ export default function SetupView(props: SetupViewProps) {
               Back to chat
             </button>
           ) : (
-            <span className="badge">Preview v0.2.1</span>
+            <span className="badge">Preview v0.3</span>
           )}
         </div>
       </header>
@@ -120,6 +122,17 @@ export default function SetupView(props: SetupViewProps) {
               )
             })}
           </div>
+        </section>
+
+        <section className="section">
+          <h2>Offline map</h2>
+          <p className="section-intro">
+            Browse {REGIONS.map((r) => r.name).join(', ')} without internet and see where you are with GPS. No AI
+            model needed.
+          </p>
+          <button className="btn primary" onClick={onShowMap}>
+            Open map
+          </button>
         </section>
 
         <section className="section">

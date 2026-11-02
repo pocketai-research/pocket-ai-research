@@ -28,6 +28,24 @@ export const CloseIcon = () => (
   </svg>
 )
 
+export const MapIcon = () => (
+  <svg {...base}>
+    <path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14" />
+  </svg>
+)
+
+export const SlidersIcon = () => (
+  <svg {...base}>
+    <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4" />
+  </svg>
+)
+
+export const ArrowLeftIcon = () => (
+  <svg {...base}>
+    <path d="M19 12H5M11 6l-6 6 6 6" />
+  </svg>
+)
+
 export const TrashIcon = () => (
   <svg {...base}>
     <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />

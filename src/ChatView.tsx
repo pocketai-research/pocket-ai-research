@@ -3,7 +3,7 @@ import { describeError, generateReply, isAbortError, type ChatMessage, type Load
 import Brand from './Brand'
 import ChatHistory from './ChatHistory'
 import type { ChatEntry, Conversation } from './chatStore'
-import { MenuIcon, PlusIcon } from './icons'
+import { MapIcon, MenuIcon, PlusIcon, SlidersIcon } from './icons'
 import Markdown from './Markdown'
 
 interface ChatViewProps {
@@ -12,6 +12,7 @@ interface ChatViewProps {
   messages: ChatEntry[]
   setMessages: Dispatch<SetStateAction<ChatEntry[]>>
   onShowModels: () => void
+  onShowMap: () => void
   onNewChat: () => void
   onOpenChat: (conversation: Conversation) => void
   onDeleteChat: (id: string) => Promise<void>
@@ -24,7 +25,7 @@ const SUGGESTIONS = [
 ]
 
 export default function ChatView(props: ChatViewProps) {
-  const { loaded, chatId, messages, setMessages, onShowModels, onNewChat, onOpenChat, onDeleteChat } = props
+  const { loaded, chatId, messages, setMessages, onShowModels, onShowMap, onNewChat, onOpenChat, onDeleteChat } = props
   const [input, setInput] = useState('')
   const [generating, setGenerating] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -104,8 +105,23 @@ export default function ChatView(props: ChatViewProps) {
             >
               <PlusIcon />
             </button>
-            <button className="btn ghost" onClick={onShowModels} disabled={generating}>
-              Models
+            <button
+              className="icon-btn"
+              aria-label="Offline map"
+              title="Offline map"
+              onClick={onShowMap}
+              disabled={generating}
+            >
+              <MapIcon />
+            </button>
+            <button
+              className="icon-btn"
+              aria-label="Models and settings"
+              title="Models and settings"
+              onClick={onShowModels}
+              disabled={generating}
+            >
+              <SlidersIcon />
             </button>
           </div>
         </div>

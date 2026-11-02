@@ -173,7 +173,7 @@ export default function ChatView(props: ChatViewProps) {
                 send(input)
               }
             }}
-            placeholder="Message Pocket AI"
+            placeholder="Message Pocket Ai Research"
             rows={1}
             aria-label="Message"
           />

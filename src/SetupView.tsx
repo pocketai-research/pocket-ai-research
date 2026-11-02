@@ -57,7 +57,7 @@ export default function SetupView(props: SetupViewProps) {
           <p className="eyebrow">Offline AI that runs on your device</p>
           <h1>An AI assistant that lives in your pocket.</h1>
           <p className="lead">
-            Pick a model and download it once. After that, Pocket AI works with no internet, no account, and nothing
+            Pick a model and download it once. After that, Pocket Ai Research works with no internet, no account, and nothing
             leaving your device.
           </p>
         </section>
@@ -114,7 +114,7 @@ export default function SetupView(props: SetupViewProps) {
       <footer className="footer">
         <div className="container">
           <p>
-            Pocket AI Research, an on-device AI project. · <a href={REPO_URL}>Source on GitHub</a>
+            Pocket Ai Research, an on-device AI project. · <a href={REPO_URL}>Source on GitHub</a>
           </p>
         </div>
       </footer>

@@ -4,7 +4,7 @@ export default function Brand() {
   return (
     <div className="brand">
       <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={32} height={32} />
-      <span>Pocket AI Research</span>
+      <span>Pocket Ai Research</span>
     </div>
   )
 }

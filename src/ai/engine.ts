@@ -23,7 +23,7 @@ export interface LoadedModel {
 }
 
 const SYSTEM_PROMPT =
-  "You are Pocket AI, a helpful assistant that runs offline on the user's device. Reply in clear, concise English."
+  "You are the Pocket Ai Research assistant, a helpful AI that runs offline on the user's device. Reply in clear, concise English."
 const CONTEXT_SIZE = 4096
 const MAX_REPLY_TOKENS = 1024
 // Only the most recent messages are sent so long chats stay inside the context window.

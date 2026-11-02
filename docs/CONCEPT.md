@@ -1,4 +1,4 @@
-# Pocket AI Research: Concept
+# Pocket Ai Research: Concept
 
 > An English-language AI assistant that runs **on the user's own device**, as an Android app or in the browser. Download the model once, then use it **without an internet connection**. It is free, and conversations are never sent to any server.
 
@@ -6,7 +6,7 @@
 
 A chat app, like a small ChatGPT, where the AI runs on the user's own device instead of on a server. It ships two ways from one codebase: an **Android app** (APK downloaded from GitHub Releases) and a **web version** on GitHub Pages.
 
-| | ChatGPT and similar | Pocket AI Research |
+| | ChatGPT and similar | Pocket Ai Research |
 |---|---|---|
 | Where the AI runs | The provider's servers | The user's own device |
 | Internet needed | Always | Only for the first download |
@@ -75,9 +75,9 @@ Measured on a Ryzen 3 4300U laptop (CPU only), Light model: about 5 tokens per s
 ## 3. How to use it
 
 ### For Android users
-1. Open the repository's **Releases** page on the phone and download the latest `PocketAI-<version>.apk`.
+1. Open the repository's **Releases** page on the phone and download the latest `PocketAiResearch-<version>.apk`.
 2. Open the file and allow installing apps from this source if Android asks, then tap **Install**.
-3. Open **Pocket AI**, pick a model, tap **Download**, and wait until it reaches 100% (Wi-Fi recommended). This happens only once.
+3. Open **Pocket Ai Research**, pick a model, tap **Download**, and wait until it reaches 100% (Wi-Fi recommended). This happens only once.
 4. When the model shows **"Ready offline"**, the chat opens. From then on it works with no internet.
 5. Use **Models** to switch or delete models and **New chat** to start over. The app reopens the last model automatically.
 

@@ -1,4 +1,4 @@
-# Pocket AI Research
+# Pocket Ai Research
 
 **Offline AI that runs on your device.**
 
@@ -9,9 +9,9 @@ An AI chat assistant that runs **entirely on your phone or computer**. Download 
 
 ## Install on Android
 
-1. Open the [latest release](https://github.com/sanadaryuki10-lgtm/pocket-ai-research/releases/latest) on your phone and download `PocketAI-<version>.apk`.
+1. Open the [latest release](https://github.com/sanadaryuki10-lgtm/pocket-ai-research/releases/latest) on your phone and download `PocketAiResearch-<version>.apk`.
 2. Open the file. If Android asks, allow your browser or file manager to **install unknown apps**.
-3. Tap **Install**, open **Pocket AI**, choose a model and download it once (Wi-Fi recommended).
+3. Tap **Install**, open **Pocket Ai Research**, choose a model and download it once (Wi-Fi recommended).
 4. From then on the chat works offline, even in airplane mode.
 
 To update, install the newer APK over the old one. Downloaded models are kept.
@@ -20,7 +20,7 @@ Requirements: Android 7.0 or newer, at least 4 GB RAM, and 0.5 to 1.1 GB of free
 
 ## Why on-device?
 
-| | Cloud AI (ChatGPT and similar) | Pocket AI Research |
+| | Cloud AI (ChatGPT and similar) | Pocket Ai Research |
 |---|---|---|
 | Where the AI runs | The provider's servers | Your own device |
 | Internet needed | Always | Only for the first model download |

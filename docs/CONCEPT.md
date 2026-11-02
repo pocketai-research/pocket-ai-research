@@ -107,7 +107,7 @@ Measured on a Ryzen 3 4300U laptop (CPU only), Light model: about 5 tokens per s
 - Domain: around Rp15,000–30,000 per year for `.my.id`, or Rp150,000–200,000 per year for `.com`.
 
 ## 6. Phases
-1. **Phase 1**: GitHub repository, website skeleton, and automatic deployment to `sanadaryuki10-lgtm.github.io/pocket-ai-research`.
+1. **Phase 1**: GitHub repository, website skeleton, and automatic deployment to `minusonedoge-cloud.github.io/pocket-ai-research`.
 2. **Phase 2**: AI engine, streamed chat replies, model picker, Android app with APK downloads from GitHub Releases.
 3. **Phase 3**: saved conversations and formatted replies (done), offline web app (PWA), multi-threading on GitHub Pages.
 4. **Phase 4**: custom domain, design polish, mobile testing.

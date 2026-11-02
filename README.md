@@ -4,12 +4,12 @@
 
 An AI chat assistant that runs **entirely on your phone or computer**. Download a model once, then chat any time, even with no internet connection. Your conversations never leave your device.
 
-- **Android app:** download the latest APK from [Releases](https://github.com/sanadaryuki10-lgtm/pocket-ai-research/releases/latest)
-- **Web version:** https://sanadaryuki10-lgtm.github.io/pocket-ai-research/
+- **Android app:** download the latest APK from [Releases](https://github.com/minusonedoge-cloud/pocket-ai-research/releases/latest)
+- **Web version:** https://minusonedoge-cloud.github.io/pocket-ai-research/
 
 ## Install on Android
 
-1. Open the [latest release](https://github.com/sanadaryuki10-lgtm/pocket-ai-research/releases/latest) on your phone and download `PocketAiResearch-<version>.apk`.
+1. Open the [latest release](https://github.com/minusonedoge-cloud/pocket-ai-research/releases/latest) on your phone and download `PocketAiResearch-<version>.apk`.
 2. Open the file. If Android asks, allow your browser or file manager to **install unknown apps**.
 3. Tap **Install**, open **Pocket Ai Research**, choose a model and download it once (Wi-Fi recommended).
 4. From then on the chat works offline, even in airplane mode.

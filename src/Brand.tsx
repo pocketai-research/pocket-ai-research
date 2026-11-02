@@ -1,4 +1,4 @@
-export const REPO_URL = 'https://github.com/sanadaryuki10-lgtm/pocket-ai-research'
+export const REPO_URL = 'https://github.com/minusonedoge-cloud/pocket-ai-research'
 
 export default function Brand() {
   return (

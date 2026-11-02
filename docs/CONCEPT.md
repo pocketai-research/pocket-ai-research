@@ -34,7 +34,7 @@ A chat app, like a small ChatGPT, where the AI runs on the user's own device ins
 2. **GitHub Actions**: every push to `main` publishes the web version to GitHub Pages. Every version tag (for example `v0.2.0`) builds a signed Android APK and attaches it to a GitHub Release.
 3. **Web app**: about 10 MB including the AI engine. **No backend server, no database, no login.**
 4. **Android app**: Capacitor wraps the same web app in an Android WebView, so the app's files are inside the APK and it opens without internet.
-5. **AI engine: wllama** (llama.cpp compiled to WebAssembly). It uses the GPU through WebGPU when available, otherwise the CPU. With cross-origin isolation it uses several CPU threads, which roughly doubles speed.
+5. **AI engine: wllama** (llama.cpp compiled to WebAssembly). It runs on the CPU by default; GPU (WebGPU) is an experimental setting because some mobile drivers crash. After a crash the app steps its settings down automatically. With cross-origin isolation it uses several CPU threads, which roughly doubles speed.
 6. **Model files**: downloaded from Hugging Face (a host for open-source AI models) on first use, then stored on the device (Origin Private File System). They are not stored on GitHub because GitHub limits files to 100 MB.
 7. **IndexedDB**: saved conversations, kept on the device. Assistant replies are rendered as Markdown (raw HTML is never rendered).
 8. **Planned (Phase 3)**: a service worker so the web version also opens offline.

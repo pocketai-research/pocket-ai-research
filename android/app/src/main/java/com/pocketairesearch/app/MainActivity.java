@@ -1,6 +1,7 @@
 package com.pocketairesearch.app;
 
 import android.os.Bundle;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
@@ -32,6 +33,15 @@ public class MainActivity extends BridgeActivity {
                         response.setResponseHeaders(headers);
                     }
                     return response;
+                }
+
+                @Override
+                public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                    // The WebView died, usually out of memory while running the model. Capacitor's
+                    // default lets Android kill the whole app; restart the activity instead so
+                    // the web app can explain what happened and step its settings down.
+                    runOnUiThread(MainActivity.this::recreate);
+                    return true;
                 }
             }
         );

@@ -28,8 +28,26 @@ export async function hasWebGPU(): Promise<boolean> {
 async function checkGpu(): Promise<DeviceCheck> {
   const base = { id: 'gpu', label: 'GPU acceleration' }
   return (await hasWebGPU())
-    ? { ...base, value: 'WebGPU available', status: 'ok', note: 'The AI can run on your graphics chip for faster replies.' }
-    : { ...base, value: 'Not available', status: 'warn', note: 'The AI will run on your CPU instead. It works, just slower.' }
+    ? { ...base, value: 'WebGPU available', status: 'ok', note: 'Can be turned on under Performance. It is experimental and off by default.' }
+    : { ...base, value: 'Not available', status: 'unknown', note: 'The AI runs on the CPU, which works on every device.' }
+}
+
+function checkThreads(): DeviceCheck {
+  const base = { id: 'threads', label: 'Multi-threading' }
+  const cores = navigator.hardwareConcurrency || 1
+  return crossOriginIsolated
+    ? { ...base, value: `On, ${cores} cores`, status: 'ok', note: 'The AI can use several CPU cores.' }
+    : { ...base, value: 'Off', status: 'warn', note: 'The AI uses one CPU core, so replies are slower.' }
+}
+
+function checkEngine(): DeviceCheck {
+  const base = { id: 'engine', label: 'Browser engine' }
+  const version = Number(navigator.userAgent.match(/Chrome\/(\d+)/)?.[1] ?? 0)
+  if (!version) return { ...base, value: 'Not Chromium', status: 'unknown', note: 'Chrome, Edge and Android work best.' }
+  const name = /; wv\)/.test(navigator.userAgent) ? 'Android WebView' : 'Chromium'
+  return version >= 120
+    ? { ...base, value: `${name} ${version}`, status: 'ok', note: 'Recent enough to run the AI.' }
+    : { ...base, value: `${name} ${version}`, status: 'warn', note: 'Update Chrome or "Android System WebView" from the Play Store.' }
 }
 
 function checkMemory(): DeviceCheck {
@@ -65,5 +83,5 @@ export function checkNetwork(online: boolean): DeviceCheck {
 
 export async function runDeviceChecks(): Promise<DeviceCheck[]> {
   const [gpu, storage] = await Promise.all([checkGpu(), checkStorage()])
-  return [gpu, checkMemory(), storage]
+  return [checkMemory(), storage, checkThreads(), gpu, checkEngine()]
 }

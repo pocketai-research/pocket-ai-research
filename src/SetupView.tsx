@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react'
 import type { ModelOption } from './ai/models'
 import Brand, { REPO_URL } from './Brand'
+import { hasWebGPU } from './deviceCheck'
 import DeviceChecks from './DeviceChecks'
+import type { EngineSettings } from './settings'
 
 export interface LoadingState {
   modelId: string
@@ -13,6 +16,9 @@ interface SetupViewProps {
   loading: LoadingState | null
   activeId: string | undefined
   error: string | null
+  notice: string | null
+  settings: EngineSettings
+  onSettingsChange: (settings: EngineSettings) => void
   onOpen: (model: ModelOption) => void
   onDelete: (model: ModelOption) => void
   onBackToChat?: () => void
@@ -35,7 +41,13 @@ function LoadingProgress({ progress, cached }: { progress: number; cached: boole
 }
 
 export default function SetupView(props: SetupViewProps) {
-  const { models, downloaded, loading, activeId, error, onOpen, onDelete, onBackToChat } = props
+  const { models, downloaded, loading, activeId, error, notice, settings, onSettingsChange, onOpen, onDelete, onBackToChat } =
+    props
+  const [gpuAvailable, setGpuAvailable] = useState(false)
+
+  useEffect(() => {
+    hasWebGPU().then(setGpuAvailable)
+  }, [])
 
   return (
     <>
@@ -47,7 +59,7 @@ export default function SetupView(props: SetupViewProps) {
               Back to chat
             </button>
           ) : (
-            <span className="badge">Preview v0.2</span>
+            <span className="badge">Preview v0.2.1</span>
           )}
         </div>
       </header>
@@ -61,6 +73,12 @@ export default function SetupView(props: SetupViewProps) {
             leaving your device.
           </p>
         </section>
+
+        {notice && (
+          <p className="alert warn" role="alert">
+            {notice}
+          </p>
+        )}
 
         {error && (
           <p className="alert" role="alert">
@@ -101,6 +119,36 @@ export default function SetupView(props: SetupViewProps) {
                 </article>
               )
             })}
+          </div>
+        </section>
+
+        <section className="section">
+          <h2>Performance</h2>
+          <p className="section-intro">Changes apply the next time you open a model.</p>
+          <div className="settings">
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={settings.gpu}
+                disabled={!gpuAvailable && !settings.gpu}
+                onChange={(e) => onSettingsChange({ ...settings, gpu: e.target.checked })}
+              />
+              <span>
+                <strong>GPU acceleration (experimental)</strong>
+                <small>{gpuAvailable ? 'Can be faster, but crashes on some phones.' : 'Not available on this device.'}</small>
+              </span>
+            </label>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={settings.singleThread}
+                onChange={(e) => onSettingsChange({ ...settings, singleThread: e.target.checked })}
+              />
+              <span>
+                <strong>Compatibility mode</strong>
+                <small>Uses one CPU core. Slower, but works on more devices.</small>
+              </span>
+            </label>
           </div>
         </section>
 

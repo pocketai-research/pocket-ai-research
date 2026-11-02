@@ -40,7 +40,7 @@ Models are downloaded from Hugging Face on first use and kept in the app's priva
 ## How it works
 
 - One codebase: a Vite + React + TypeScript web app. [Capacitor](https://capacitorjs.com) wraps the same app as an Android APK.
-- The model runs with [wllama](https://github.com/ngxson/wllama) (llama.cpp compiled to WebAssembly). It uses the GPU through WebGPU when the device supports it, otherwise the CPU.
+- The model runs with [wllama](https://github.com/ngxson/wllama) (llama.cpp compiled to WebAssembly). It runs on the CPU by default; GPU acceleration through WebGPU is an experimental setting. If the app dies while a model loads or replies (usually out of memory), the next launch explains what happened and steps the settings down (GPU off, then one CPU thread).
 - Cross-origin isolation headers let wllama use several CPU threads, which roughly doubles speed. The Android app adds them in [MainActivity.java](android/app/src/main/java/com/pocketairesearch/app/MainActivity.java) and the local dev server in [vite.config.ts](vite.config.ts). GitHub Pages cannot set custom headers, so the hosted web version currently runs on one thread (Phase 3 adds a service worker to fix this).
 - There is no backend server or login. Chats are saved on the device in IndexedDB, and replies are rendered as Markdown without ever rendering raw HTML.
 

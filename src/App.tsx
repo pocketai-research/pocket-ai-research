@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { deleteModel, describeError, listDownloadedUrls, loadModel, type LoadedModel } from './ai/engine'
 import { MODELS, type ModelOption } from './ai/models'
 import ChatView from './ChatView'
@@ -10,25 +10,44 @@ import {
   type ChatEntry,
   type Conversation,
 } from './chatStore'
+import {
+  readEngineSettings,
+  readLastModel,
+  saveEngineSettings,
+  saveLastModel,
+  takeBusyMarker,
+  type EngineSettings,
+} from './settings'
 import SetupView, { type LoadingState } from './SetupView'
 
-const LAST_MODEL_KEY = 'pocket-ai:last-model'
+/**
+ * If the app died last time while a model was loading or replying (usually out of memory, or a
+ * GPU driver crash), step the engine settings down one level and explain what happened.
+ * Runs once per launch, at module load, so React StrictMode cannot consume it twice.
+ */
+function recoverFromCrash(): string | null {
+  const marker = takeBusyMarker()
+  if (!marker) return null
 
-function readLastModel(): string | null {
-  try {
-    return localStorage.getItem(LAST_MODEL_KEY)
-  } catch {
-    return null
+  const settings = readEngineSettings()
+  let change: string
+  if (marker.settings.gpu) {
+    settings.gpu = false
+    change = 'GPU acceleration has been turned off.'
+  } else if (!marker.settings.singleThread) {
+    settings.singleThread = true
+    change = 'Compatibility mode has been turned on (slower, but more reliable).'
+  } else {
+    change = 'Try the Light model, close other apps, or restart your device.'
   }
+  saveEngineSettings(settings)
+
+  const name = MODELS.find((m) => m.id === marker.modelId)?.name ?? 'the model'
+  const when = marker.phase === 'loading' ? `while loading ${name}` : `while ${name} was replying`
+  return `Pocket Ai Research closed unexpectedly ${when}, usually because the device ran out of memory. ${change} If you closed the app yourself, you can change this under Performance.`
 }
 
-function saveLastModel(id: string) {
-  try {
-    localStorage.setItem(LAST_MODEL_KEY, id)
-  } catch {
-    // Storage can be unavailable (private mode); remembering the model is optional.
-  }
-}
+const crashNotice = recoverFromCrash()
 
 type ChatMeta = Pick<Conversation, 'id' | 'createdAt'>
 
@@ -42,38 +61,44 @@ export default function App() {
   const [chatMeta, setChatMeta] = useState(newChatMeta)
   const [messages, setMessages] = useState<ChatEntry[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [settings, setSettings] = useState<EngineSettings>(readEngineSettings)
+  const [notice, setNotice] = useState(crashNotice)
   // JSON of the messages last written to (or read from) storage, to skip redundant saves.
   const savedSnapshot = useRef('[]')
 
-  const refreshDownloaded = useCallback(() => listDownloadedUrls().then(setDownloaded), [])
+  const refreshDownloaded = () => listDownloadedUrls().then(setDownloaded)
 
-  const openModel = useCallback(
-    async (model: ModelOption) => {
-      setError(null)
-      setLoading({ modelId: model.id, progress: 0 })
-      try {
-        const result = await loadModel(model, (progress) => setLoading({ modelId: model.id, progress }))
-        setActive(result)
-        saveLastModel(model.id)
-        setView('chat')
-      } catch (err) {
-        setError(describeError(err))
-      } finally {
-        setLoading(null)
-        refreshDownloaded()
-      }
-    },
-    [refreshDownloaded],
-  )
+  async function openModel(model: ModelOption) {
+    setError(null)
+    setLoading({ modelId: model.id, progress: 0 })
+    try {
+      const result = await loadModel(model, settings, (progress) => setLoading({ modelId: model.id, progress }))
+      setActive(result)
+      setNotice(null)
+      saveLastModel(model.id)
+      setView('chat')
+    } catch (err) {
+      setError(describeError(err))
+    } finally {
+      setLoading(null)
+      refreshDownloaded()
+    }
+  }
 
-  // Reopen the last used model straight into the chat when it is already on the device.
+  // Reopen the last used model straight into the chat when it is already on the device,
+  // unless the previous launch crashed (reopening could crash again in a loop).
   useEffect(() => {
     listDownloadedUrls().then((urls) => {
       setDownloaded(urls)
       const last = MODELS.find((m) => m.id === readLastModel())
-      if (last && urls.has(last.url)) openModel(last)
+      if (!crashNotice && last && urls.has(last.url)) openModel(last)
     })
-  }, [openModel])
+  }, [])
+
+  function changeSettings(next: EngineSettings) {
+    setSettings(next)
+    saveEngineSettings(next)
+  }
 
   // Continue the most recent chat, so closing the app (or Android stopping it) loses nothing.
   useEffect(() => {
@@ -159,6 +184,9 @@ export default function App() {
       loading={loading}
       activeId={active?.model.id}
       error={error}
+      notice={notice}
+      settings={settings}
+      onSettingsChange={changeSettings}
       onOpen={openModel}
       onDelete={removeModel}
       onBackToChat={active ? () => setView('chat') : undefined}

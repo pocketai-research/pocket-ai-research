@@ -412,10 +412,16 @@ h2 {
 }
 
 .bubble {
+  min-width: 0;
+  max-width: 100%;
   padding: 10px 14px;
   border-radius: 16px;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.msg.user .bubble,
+.msg.error .bubble {
+  white-space: pre-wrap;
 }
 
 .msg.user .bubble {
@@ -491,6 +497,189 @@ h2 {
   margin: 6px auto 0;
   font-size: 12px;
   text-align: center;
+  color: var(--muted);
+}
+
+/* Markdown in assistant replies */
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol,
+.markdown pre,
+.markdown table,
+.markdown blockquote {
+  margin: 0 0 10px;
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: 22px;
+}
+
+.markdown li + li {
+  margin-top: 4px;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  margin: 14px 0 6px;
+  font-size: 16px;
+}
+
+.markdown code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--bg);
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.markdown pre {
+  padding: 10px 12px;
+  overflow-x: auto;
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.markdown pre code {
+  padding: 0;
+  background: none;
+}
+
+.markdown blockquote {
+  padding-left: 12px;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.markdown table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.markdown th,
+.markdown td {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+/* Header icon buttons */
+.topbar-start {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.icon-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Saved chats drawer */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: rgb(0 0 0 / 0.4);
+}
+
+.drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(320px, 85vw);
+  height: 100%;
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  background: var(--surface);
+  box-shadow: 4px 0 24px rgb(0 0 0 / 0.2);
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drawer-head h2 {
+  margin: 0;
+}
+
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-list li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 10px;
+}
+
+.chat-list li.active {
+  background: var(--accent-soft);
+}
+
+.chat-list .icon-btn {
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.chat-item {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chat-title {
+  overflow: hidden;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chat-date {
+  font-size: 13px;
   color: var(--muted);
 }
 

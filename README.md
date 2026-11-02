@@ -42,7 +42,7 @@ Models are downloaded from Hugging Face on first use and kept in the app's priva
 - One codebase: a Vite + React + TypeScript web app. [Capacitor](https://capacitorjs.com) wraps the same app as an Android APK.
 - The model runs with [wllama](https://github.com/ngxson/wllama) (llama.cpp compiled to WebAssembly). It uses the GPU through WebGPU when the device supports it, otherwise the CPU.
 - Cross-origin isolation headers let wllama use several CPU threads, which roughly doubles speed. The Android app adds them in [MainActivity.java](android/app/src/main/java/com/pocketairesearch/app/MainActivity.java) and the local dev server in [vite.config.ts](vite.config.ts). GitHub Pages cannot set custom headers, so the hosted web version currently runs on one thread (Phase 3 adds a service worker to fix this).
-- There is no backend, database or login.
+- There is no backend server or login. Chats are saved on the device in IndexedDB, and replies are rendered as Markdown without ever rendering raw HTML.
 
 See [docs/CONCEPT.md](docs/CONCEPT.md) for the full concept and usage guide.
 
@@ -95,6 +95,7 @@ Keep the keystore and its password backed up outside the repository. Never commi
 
 - [x] **Phase 1**: project setup and automatic deployment
 - [x] **Phase 2**: on-device AI chat with a model picker, Android app
-- [ ] **Phase 3**: saved conversations and an installable offline web app (PWA)
+- [x] **Phase 3a**: saved conversations and Markdown-formatted replies
+- [ ] **Phase 3b**: installable offline web app (PWA) and multi-threading on GitHub Pages
 - [ ] **Phase 4**: custom domain and design polish
 - [ ] **Phase 5**: ask your documents, task templates, voice input

@@ -36,7 +36,8 @@ A chat app, like a small ChatGPT, where the AI runs on the user's own device ins
 4. **Android app**: Capacitor wraps the same web app in an Android WebView, so the app's files are inside the APK and it opens without internet.
 5. **AI engine: wllama** (llama.cpp compiled to WebAssembly). It uses the GPU through WebGPU when available, otherwise the CPU. With cross-origin isolation it uses several CPU threads, which roughly doubles speed.
 6. **Model files**: downloaded from Hugging Face (a host for open-source AI models) on first use, then stored on the device (Origin Private File System). They are not stored on GitHub because GitHub limits files to 100 MB.
-7. **Planned (Phase 3)**: IndexedDB for saved conversations, and a service worker so the web version also opens offline.
+7. **IndexedDB**: saved conversations, kept on the device. Assistant replies are rendered as Markdown (raw HTML is never rendered).
+8. **Planned (Phase 3)**: a service worker so the web version also opens offline.
 
 ### Flow
 ```
@@ -68,7 +69,8 @@ Measured on a Ryzen 3 4300U laptop (CPU only), Light model: about 5 tokens per s
 - **Capacitor**: Android packaging
 - **@wllama/wllama**: AI engine
 - **GitHub Actions, GitHub Pages and GitHub Releases**: build, hosting and APK downloads
-- Planned: **vite-plugin-pwa** (offline web app) and **IndexedDB** (saved conversations)
+- **idb** (IndexedDB) and **react-markdown**: saved conversations and formatted replies
+- Planned: **vite-plugin-pwa** (offline web app)
 
 ## 3. How to use it
 
@@ -96,7 +98,7 @@ Measured on a Ryzen 3 4300U laptop (CPU only), Light model: about 5 tokens per s
 - Small models are **less capable than ChatGPT**. They can get facts wrong, struggle with complex problems, and do not know recent news.
 - The first download is large (0.5 to 1.1 GB).
 - Speed depends on the user's device. Older phones may not cope.
-- Models are lost if the user clears the app's or browser's data. Conversations are not saved yet (Phase 3).
+- Models and saved chats are lost if the user clears the app's or browser's data.
 - The APK is installed outside the Play Store, so Android shows an "unknown apps" warning.
 - The first download depends on Hugging Face hosting the model files.
 
@@ -107,6 +109,6 @@ Measured on a Ryzen 3 4300U laptop (CPU only), Light model: about 5 tokens per s
 ## 6. Phases
 1. **Phase 1**: GitHub repository, website skeleton, and automatic deployment to `sanadaryuki10-lgtm.github.io/pocket-ai-research`.
 2. **Phase 2**: AI engine, streamed chat replies, model picker, Android app with APK downloads from GitHub Releases.
-3. **Phase 3**: saved conversations, offline web app (PWA), multi-threading on GitHub Pages.
+3. **Phase 3**: saved conversations and formatted replies (done), offline web app (PWA), multi-threading on GitHub Pages.
 4. **Phase 4**: custom domain, design polish, mobile testing.
 5. **Phase 5 (optional)**: ask your documents, task templates, voice input.

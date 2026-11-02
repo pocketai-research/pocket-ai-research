@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { describeError, generateReply, isAbortError, type ChatMessage, type LoadedModel } from './ai/engine'
 import Brand from './Brand'
-
-export interface ChatEntry extends ChatMessage {
-  tokensPerSecond?: number
-  error?: boolean
-}
+import ChatHistory from './ChatHistory'
+import type { ChatEntry, Conversation } from './chatStore'
+import { MenuIcon, PlusIcon } from './icons'
+import Markdown from './Markdown'
 
 interface ChatViewProps {
   loaded: LoadedModel
+  chatId: string
   messages: ChatEntry[]
   setMessages: Dispatch<SetStateAction<ChatEntry[]>>
   onShowModels: () => void
+  onNewChat: () => void
+  onOpenChat: (conversation: Conversation) => void
+  onDeleteChat: (id: string) => Promise<void>
 }
 
 const SUGGESTIONS = [
@@ -20,9 +23,11 @@ const SUGGESTIONS = [
   'Give me three tips to focus while studying.',
 ]
 
-export default function ChatView({ loaded, messages, setMessages, onShowModels }: ChatViewProps) {
+export default function ChatView(props: ChatViewProps) {
+  const { loaded, chatId, messages, setMessages, onShowModels, onNewChat, onOpenChat, onDeleteChat } = props
   const [input, setInput] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const controllerRef = useRef<AbortController | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -71,7 +76,18 @@ export default function ChatView({ loaded, messages, setMessages, onShowModels }
     <div className="chat-layout">
       <header className="topbar">
         <div className="container topbar-inner">
-          <Brand />
+          <div className="topbar-start">
+            <button
+              className="icon-btn"
+              aria-label="Saved chats"
+              title="Saved chats"
+              onClick={() => setHistoryOpen(true)}
+              disabled={generating}
+            >
+              <MenuIcon />
+            </button>
+            <Brand />
+          </div>
           <div className="topbar-actions">
             <span
               className="badge"
@@ -79,8 +95,14 @@ export default function ChatView({ loaded, messages, setMessages, onShowModels }
             >
               {loaded.model.tier} · {loaded.backend}
             </span>
-            <button className="btn ghost" onClick={() => setMessages([])} disabled={generating || !messages.length}>
-              New chat
+            <button
+              className="icon-btn"
+              aria-label="New chat"
+              title="New chat"
+              onClick={onNewChat}
+              disabled={generating || !messages.length}
+            >
+              <PlusIcon />
             </button>
             <button className="btn ghost" onClick={onShowModels} disabled={generating}>
               Models
@@ -88,6 +110,16 @@ export default function ChatView({ loaded, messages, setMessages, onShowModels }
           </div>
         </div>
       </header>
+
+      {historyOpen && (
+        <ChatHistory
+          currentId={chatId}
+          onClose={() => setHistoryOpen(false)}
+          onNew={onNewChat}
+          onOpen={onOpenChat}
+          onDelete={onDeleteChat}
+        />
+      )}
 
       <div className="messages" ref={listRef}>
         <div className="container messages-inner">
@@ -106,7 +138,15 @@ export default function ChatView({ loaded, messages, setMessages, onShowModels }
           ) : (
             messages.map((m, i) => (
               <div key={i} className={`msg ${m.role}${m.error ? ' error' : ''}`}>
-                <div className="bubble">{m.content || <span className="thinking">Thinking…</span>}</div>
+                <div className="bubble">
+                  {!m.content ? (
+                    <span className="thinking">Thinking…</span>
+                  ) : m.role === 'assistant' && !m.error ? (
+                    <Markdown text={m.content} />
+                  ) : (
+                    m.content
+                  )}
+                </div>
                 {m.tokensPerSecond !== undefined && (
                   <span className="meta">{m.tokensPerSecond.toFixed(1)} tokens/s</span>
                 )}

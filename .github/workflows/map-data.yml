@@ -1,0 +1,56 @@
+name: Map data
+
+# Cuts offline map packs (OpenStreetMap data in the Protomaps basemap schema) for the
+# regions in src/map/regions.json and publishes them on the "map-data" release.
+# The web and Android builds download the packs from there. Run it by hand when the
+# regions change or the map data should be refreshed.
+on:
+  workflow_dispatch:
+    inputs:
+      build:
+        description: Protomaps daily build to cut from (YYYYMMDD, see https://maps.protomaps.com/builds)
+        required: true
+        default: '20261101'
+
+permissions:
+  contents: write
+
+env:
+  PMTILES_VERSION: 1.31.2
+  PMTILES_SHA256: 3ed7dbf4ec2e6dfe5e25b6f70d1ffc932729f93c86db353bf514dd71010a312f
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install pmtiles CLI
+        run: |
+          curl -sSL -o pmtiles.tar.gz "https://github.com/protomaps/go-pmtiles/releases/download/v${PMTILES_VERSION}/go-pmtiles_${PMTILES_VERSION}_Linux_x86_64.tar.gz"
+          echo "${PMTILES_SHA256}  pmtiles.tar.gz" | sha256sum -c
+          tar -xzf pmtiles.tar.gz pmtiles
+
+      - name: Extract regions
+        env:
+          BUILD: ${{ inputs.build }}
+        run: |
+          mkdir -p out
+          jq -c '.[]' src/map/regions.json | while read -r region; do
+            id=$(jq -r .id <<< "$region")
+            bbox=$(jq -r '.bbox | join(",")' <<< "$region")
+            maxzoom=$(jq -r .maxzoom <<< "$region")
+            ./pmtiles extract "https://build.protomaps.com/$BUILD.pmtiles" "out/$id.pmtiles" --bbox="$bbox" --maxzoom="$maxzoom"
+            ./pmtiles show "out/$id.pmtiles"
+          done
+          ls -la out
+
+      - name: Publish to the map-data release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view map-data > /dev/null 2>&1; then
+            gh release create map-data --title "Map data" --latest=false \
+              --notes "Offline map packs used by the app builds (not an app release). Map data © OpenStreetMap contributors (ODbL); basemap schema by Protomaps."
+          fi
+          gh release upload map-data out/*.pmtiles --clobber

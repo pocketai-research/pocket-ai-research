@@ -1,12 +1,22 @@
 # Pocket AI Research
 
-**Offline AI that runs in your browser.**
+**Offline AI that runs on your device.**
 
-An AI assistant that runs **entirely on your device**. Download a model once, then chat any time, even with no internet connection. Your conversations never leave your device.
+An AI chat assistant that runs **entirely on your phone or computer**. Download a model once, then chat any time, even with no internet connection. Your conversations never leave your device.
 
-**Live site:** https://sanadaryuki10-lgtm.github.io/pocket-ai-research/
+- **Android app:** download the latest APK from [Releases](https://github.com/sanadaryuki10-lgtm/pocket-ai-research/releases/latest)
+- **Web version:** https://sanadaryuki10-lgtm.github.io/pocket-ai-research/
 
-> Status: **Phase 1 (preview)**. The site and automatic deployment are live. The chat arrives in Phase 2. See the [roadmap](#roadmap).
+## Install on Android
+
+1. Open the [latest release](https://github.com/sanadaryuki10-lgtm/pocket-ai-research/releases/latest) on your phone and download `PocketAI-<version>.apk`.
+2. Open the file. If Android asks, allow your browser or file manager to **install unknown apps**.
+3. Tap **Install**, open **Pocket AI**, choose a model and download it once (Wi-Fi recommended).
+4. From then on the chat works offline, even in airplane mode.
+
+To update, install the newer APK over the old one. Downloaded models are kept.
+
+Requirements: Android 7.0 or newer, at least 4 GB RAM, and 0.5 to 1.1 GB of free storage per model.
 
 ## Why on-device?
 
@@ -18,14 +28,23 @@ An AI assistant that runs **entirely on your device**. Download a model once, th
 | Cost | Subscription or API fees | Free |
 | Capability | Very high | Moderate (small models) |
 
+## Models
+
+| Tier | Model | Download | Best for |
+|---|---|---|---|
+| Light | Qwen2.5 0.5B Instruct (Q4_K_M) | 491 MB | Phones, short questions |
+| Balanced | Qwen2.5 1.5B Instruct (Q4_K_M) | 1.1 GB | Laptops and newer phones |
+
+Models are downloaded from Hugging Face on first use and kept in the app's private storage (the browser's Origin Private File System).
+
 ## How it works
 
-- A static web app (Vite + React + TypeScript) hosted on GitHub Pages. There is no backend, database or login.
-- The AI model is downloaded from Hugging Face on first use and stored in the browser.
-- The model runs in the browser with **WebLLM** (GPU, via WebGPU) or **wllama** (CPU, via WebAssembly) as a fallback.
-- A service worker caches the app so it opens offline, and conversations are saved in IndexedDB on the device.
+- One codebase: a Vite + React + TypeScript web app. [Capacitor](https://capacitorjs.com) wraps the same app as an Android APK.
+- The model runs with [wllama](https://github.com/ngxson/wllama) (llama.cpp compiled to WebAssembly). It uses the GPU through WebGPU when the device supports it, otherwise the CPU.
+- Cross-origin isolation headers let wllama use several CPU threads, which roughly doubles speed. The Android app adds them in [MainActivity.java](android/app/src/main/java/com/pocketairesearch/app/MainActivity.java) and the local dev server in [vite.config.ts](vite.config.ts). GitHub Pages cannot set custom headers, so the hosted web version currently runs on one thread (Phase 3 adds a service worker to fix this).
+- There is no backend, database or login.
 
-See [docs/CONCEPT.md](docs/CONCEPT.md) for the full concept, system design and usage guide.
+See [docs/CONCEPT.md](docs/CONCEPT.md) for the full concept and usage guide.
 
 ## Development
 
@@ -38,16 +57,44 @@ npm run build    # type-check and build to dist/
 npm run preview  # serve the production build locally
 ```
 
-## Deployment
+To work on the Android app locally you also need Android Studio (JDK 21 and the Android SDK):
 
-Every push to `main` runs [.github/workflows/deploy.yml](.github/workflows/deploy.yml), which builds the site and publishes it to GitHub Pages. It goes live in about 1 to 2 minutes.
+```bash
+npm run android:sync   # build the web app and copy it into android/
+npx cap open android   # open the project in Android Studio
+```
 
-The build uses relative paths (`base: './'` in [vite.config.ts](vite.config.ts)), so the same output works on `github.io/pocket-ai-research/` and on a custom domain.
+## Releases and deployment
+
+| Workflow | Trigger | Result |
+|---|---|---|
+| [deploy.yml](.github/workflows/deploy.yml) | Push to `main` | Web version published to GitHub Pages |
+| [android.yml](.github/workflows/android.yml) | Push a tag such as `v0.2.0` | Signed APK attached to a new GitHub Release |
+| [android.yml](.github/workflows/android.yml) | Run manually | APK uploaded as a workflow artifact |
+
+Publish a new Android version:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+### Android release signing
+
+Every release must be signed with the same key, or users cannot update in place. The workflow reads the key from three repository secrets:
+
+| Secret | Value |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | The PKCS#12 keystore (`.p12`), base64-encoded |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore password |
+| `ANDROID_KEY_ALIAS` | Key alias inside the keystore |
+
+Keep the keystore and its password backed up outside the repository. Never commit them.
 
 ## Roadmap
 
 - [x] **Phase 1**: project setup and automatic deployment
-- [ ] **Phase 2**: on-device AI chat with a model picker
-- [ ] **Phase 3**: offline mode (PWA) and saved conversations
-- [ ] **Phase 4**: custom domain and mobile polish
+- [x] **Phase 2**: on-device AI chat with a model picker, Android app
+- [ ] **Phase 3**: saved conversations and an installable offline web app (PWA)
+- [ ] **Phase 4**: custom domain and design polish
 - [ ] **Phase 5**: ask your documents, task templates, voice input

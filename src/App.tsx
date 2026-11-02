@@ -1,129 +1,86 @@
-import { useEffect, useState } from 'react'
-import { checkNetwork, runDeviceChecks, type DeviceCheck } from './deviceCheck'
+import { useCallback, useEffect, useState } from 'react'
+import { deleteModel, describeError, listDownloadedUrls, loadModel, type LoadedModel } from './ai/engine'
+import { MODELS, type ModelOption } from './ai/models'
+import ChatView, { type ChatEntry } from './ChatView'
+import SetupView, { type LoadingState } from './SetupView'
 
-const REPO_URL = 'https://github.com/sanadaryuki10-lgtm/pocket-ai-research'
+const LAST_MODEL_KEY = 'pocket-ai:last-model'
 
-const features = [
-  { title: 'Works offline', text: 'Download a model once. After that, chat anywhere, even in airplane mode.' },
-  { title: 'Private by design', text: 'The AI runs on your device. Your messages are never sent to a server.' },
-  { title: 'Free to use', text: 'No account, no subscription, no API key.' },
-  { title: 'Installable', text: 'Add it to your desktop or home screen and open it like an app.' },
-]
-
-const roadmap = [
-  { phase: 'Phase 1', title: 'Project setup and automatic deployment', done: true },
-  { phase: 'Phase 2', title: 'On-device AI chat with a model picker', done: false },
-  { phase: 'Phase 3', title: 'Offline mode and saved conversations', done: false },
-  { phase: 'Phase 4', title: 'Custom domain and mobile polish', done: false },
-  { phase: 'Phase 5', title: 'Ask your documents, task templates, voice input', done: false },
-]
-
-function useOnline() {
-  const [online, setOnline] = useState(navigator.onLine)
-  useEffect(() => {
-    const update = () => setOnline(navigator.onLine)
-    window.addEventListener('online', update)
-    window.addEventListener('offline', update)
-    return () => {
-      window.removeEventListener('online', update)
-      window.removeEventListener('offline', update)
-    }
-  }, [])
-  return online
+function readLastModel(): string | null {
+  try {
+    return localStorage.getItem(LAST_MODEL_KEY)
+  } catch {
+    return null
+  }
 }
 
-function CheckItem({ check }: { check: DeviceCheck }) {
-  return (
-    <li className="check">
-      <span className={`dot ${check.status}`} aria-hidden="true" />
-      <div className="check-head">
-        <span className="check-label">{check.label}</span>
-        <span className="check-value">{check.value}</span>
-      </div>
-      <p className="check-note">{check.note}</p>
-    </li>
-  )
+function saveLastModel(id: string) {
+  try {
+    localStorage.setItem(LAST_MODEL_KEY, id)
+  } catch {
+    // Storage can be unavailable (private mode); remembering the model is optional.
+  }
 }
 
 export default function App() {
-  const [checks, setChecks] = useState<DeviceCheck[] | null>(null)
-  const online = useOnline()
+  const [downloaded, setDownloaded] = useState<Set<string> | null>(null)
+  const [loading, setLoading] = useState<LoadingState | null>(null)
+  const [active, setActive] = useState<LoadedModel | null>(null)
+  const [view, setView] = useState<'setup' | 'chat'>('setup')
+  const [messages, setMessages] = useState<ChatEntry[]>([])
+  const [error, setError] = useState<string | null>(null)
 
+  const refreshDownloaded = useCallback(() => listDownloadedUrls().then(setDownloaded), [])
+
+  const openModel = useCallback(
+    async (model: ModelOption) => {
+      setError(null)
+      setLoading({ modelId: model.id, progress: 0 })
+      try {
+        const result = await loadModel(model, (progress) => setLoading({ modelId: model.id, progress }))
+        setActive(result)
+        saveLastModel(model.id)
+        setView('chat')
+      } catch (err) {
+        setError(describeError(err))
+      } finally {
+        setLoading(null)
+        refreshDownloaded()
+      }
+    },
+    [refreshDownloaded],
+  )
+
+  // Reopen the last used model straight into the chat when it is already on the device.
   useEffect(() => {
-    runDeviceChecks().then(setChecks)
-  }, [])
+    listDownloadedUrls().then((urls) => {
+      setDownloaded(urls)
+      const last = MODELS.find((m) => m.id === readLastModel())
+      if (last && urls.has(last.url)) openModel(last)
+    })
+  }, [openModel])
+
+  async function removeModel(model: ModelOption) {
+    if (!confirm(`Delete ${model.name} from this device? You will need to download it again to use it.`)) return
+    await deleteModel(model)
+    if (active?.model.id === model.id) setActive(null)
+    refreshDownloaded()
+  }
+
+  if (view === 'chat' && active) {
+    return <ChatView loaded={active} messages={messages} setMessages={setMessages} onShowModels={() => setView('setup')} />
+  }
 
   return (
-    <>
-      <header className="topbar">
-        <div className="container topbar-inner">
-          <div className="brand">
-            <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={32} height={32} />
-            <span>Pocket AI Research</span>
-          </div>
-          <span className="badge">Preview v0.1</span>
-        </div>
-      </header>
-
-      <main className="container">
-        <section className="hero">
-          <p className="eyebrow">Offline AI that runs in your browser</p>
-          <h1>An AI assistant that lives in your pocket.</h1>
-          <p className="lead">
-            Pocket AI Research runs a language model directly in your browser. Download it once, then chat any
-            time with no internet, no account, and no data leaving your device.
-          </p>
-          <p className="notice">The chat is in development and arrives in Phase 2.</p>
-        </section>
-
-        <section className="section">
-          <h2>Why on-device?</h2>
-          <p className="section-intro">Everything happens on your own laptop or phone.</p>
-          <div className="grid">
-            {features.map((f) => (
-              <article className="card" key={f.title}>
-                <h3>{f.title}</h3>
-                <p>{f.text}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="section">
-          <h2>Is my device ready?</h2>
-          <p className="section-intro">This check runs locally in your browser. Nothing is uploaded.</p>
-          {checks ? (
-            <ul className="checks">
-              {[...checks, checkNetwork(online)].map((c) => (
-                <CheckItem check={c} key={c.id} />
-              ))}
-            </ul>
-          ) : (
-            <p className="section-intro">Checking your device…</p>
-          )}
-        </section>
-
-        <section className="section">
-          <h2>Roadmap</h2>
-          <ol className="roadmap">
-            {roadmap.map((r) => (
-              <li className={r.done ? 'done' : undefined} key={r.phase}>
-                <span className="phase">{r.phase}</span>
-                <span>{r.title}</span>
-                <span className="state">{r.done ? 'Done' : 'Planned'}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      </main>
-
-      <footer className="footer">
-        <div className="container">
-          <p>
-            Pocket AI Research, an on-device AI project. · <a href={REPO_URL}>Source on GitHub</a>
-          </p>
-        </div>
-      </footer>
-    </>
+    <SetupView
+      models={MODELS}
+      downloaded={downloaded}
+      loading={loading}
+      activeId={active?.model.id}
+      error={error}
+      onOpen={openModel}
+      onDelete={removeModel}
+      onBackToChat={active ? () => setView('chat') : undefined}
+    />
   )
 }

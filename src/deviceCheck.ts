@@ -17,16 +17,17 @@ type NavigatorExtras = Navigator & {
 const nav = navigator as NavigatorExtras
 const GB = 1024 ** 3
 
-async function checkGpu(): Promise<DeviceCheck> {
-  let adapter: unknown = null
+export async function hasWebGPU(): Promise<boolean> {
   try {
-    adapter = nav.gpu ? await nav.gpu.requestAdapter() : null
+    return nav.gpu ? (await nav.gpu.requestAdapter()) !== null : false
   } catch {
-    adapter = null
+    return false
   }
+}
 
+async function checkGpu(): Promise<DeviceCheck> {
   const base = { id: 'gpu', label: 'GPU acceleration' }
-  return adapter
+  return (await hasWebGPU())
     ? { ...base, value: 'WebGPU available', status: 'ok', note: 'The AI can run on your graphics chip for faster replies.' }
     : { ...base, value: 'Not available', status: 'warn', note: 'The AI will run on your CPU instead. It works, just slower.' }
 }

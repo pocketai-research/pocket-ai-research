@@ -1,4 +1,4 @@
-# Saku AI Research: Concept
+# Pocket AI Research: Concept
 
 > An English-language AI assistant that runs **directly in the browser**. Download the model once, then use it **without an internet connection**. It is free, and conversations are never sent to any server.
 
@@ -6,7 +6,7 @@
 
 A chat web app, like a small ChatGPT, where the AI runs on the user's own device instead of on a server.
 
-| | ChatGPT and similar | Saku AI Research |
+| | ChatGPT and similar | Pocket AI Research |
 |---|---|---|
 | Where the AI runs | The provider's servers | The user's own device |
 | Internet needed | Always | Only for the first download |
@@ -102,7 +102,7 @@ Models will be chosen by testing English quality and speed on real devices.
 - Domain: around Rp15,000–30,000 per year for `.my.id`, or Rp150,000–200,000 per year for `.com`.
 
 ## 6. Phases
-1. **Phase 1**: GitHub repository, website skeleton, and automatic deployment to `sanadaryuki10-lgtm.github.io/saku-ai-research`.
+1. **Phase 1**: GitHub repository, website skeleton, and automatic deployment to `sanadaryuki10-lgtm.github.io/pocket-ai-research`.
 2. **Phase 2**: AI engine, streamed chat replies, model picker, testing on real devices.
 3. **Phase 3**: offline mode (PWA) and saved conversations.
 4. **Phase 4**: custom domain, design polish, mobile testing.

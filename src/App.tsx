@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { checkNetwork, runDeviceChecks, type DeviceCheck } from './deviceCheck'
 
-const REPO_URL = 'https://github.com/sanadaryuki10-lgtm/saku-ai-research'
+const REPO_URL = 'https://github.com/sanadaryuki10-lgtm/pocket-ai-research'
 
 const features = [
   { title: 'Works offline', text: 'Download a model once. After that, chat anywhere, even in airplane mode.' },
@@ -59,7 +59,7 @@ export default function App() {
         <div className="container topbar-inner">
           <div className="brand">
             <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={32} height={32} />
-            <span>Saku AI Research</span>
+            <span>Pocket AI Research</span>
           </div>
           <span className="badge">Preview v0.1</span>
         </div>
@@ -67,10 +67,10 @@ export default function App() {
 
       <main className="container">
         <section className="hero">
-          <p className="eyebrow">On-device AI</p>
+          <p className="eyebrow">Offline AI that runs in your browser</p>
           <h1>An AI assistant that lives in your pocket.</h1>
           <p className="lead">
-            Saku AI Research runs a language model directly in your browser. Download it once, then chat any
+            Pocket AI Research runs a language model directly in your browser. Download it once, then chat any
             time with no internet, no account, and no data leaving your device.
           </p>
           <p className="notice">The chat is in development and arrives in Phase 2.</p>
@@ -120,7 +120,7 @@ export default function App() {
       <footer className="footer">
         <div className="container">
           <p>
-            "Saku" is Indonesian for "pocket". · <a href={REPO_URL}>Source on GitHub</a>
+            Pocket AI Research, an on-device AI project. · <a href={REPO_URL}>Source on GitHub</a>
           </p>
         </div>
       </footer>

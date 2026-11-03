@@ -183,7 +183,7 @@ export default function App() {
   if (view === 'map') {
     return (
       <Suspense fallback={<p className="container section-intro">Loading map…</p>}>
-        <MapView onBack={() => setView(viewBeforeMap)} />
+        <MapView onBack={() => setView(viewBeforeMap)} ai={{ ready: active !== null, reply: replySettings }} />
       </Suspense>
     )
   }

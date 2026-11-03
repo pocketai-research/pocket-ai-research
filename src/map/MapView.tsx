@@ -15,7 +15,10 @@ import { STYLE_URL } from './download'
 import type { BBox } from './geo'
 import { offlineStyle } from './offlineMap'
 import { listAreas, type OfflineArea } from './offlineStore'
+import type { Place } from './places'
 import RegionPanel from './RegionPanel'
+import type { SearchOrigin } from './SearchPanel'
+import type { ReplySettings } from '../settings'
 
 // MapLibre 6 looks for its worker next to its own module, which bundling breaks.
 setWorkerUrl(workerUrl)
@@ -57,7 +60,44 @@ function showOutline(map: MapLibreMap, bbox: BBox) {
   })
 }
 
-export default function MapView({ onBack }: { onBack: () => void }) {
+const panelHeight = () => document.querySelector('.region-panel')?.getBoundingClientRect().height ?? 0
+
+/** Numbered dots for search results. */
+function showPlaces(map: MapLibreMap, places: Place[]) {
+  const data = {
+    type: 'FeatureCollection' as const,
+    features: places.map((place, i) => ({
+      type: 'Feature' as const,
+      properties: { rank: String(i + 1) },
+      geometry: { type: 'Point' as const, coordinates: [place.lon, place.lat] },
+    })),
+  }
+  const source = map.getSource('search-results') as GeoJSONSource | undefined
+  if (source) return source.setData(data)
+  map.addSource('search-results', { type: 'geojson', data })
+  map.addLayer({
+    id: 'search-results-dot',
+    type: 'circle',
+    source: 'search-results',
+    paint: { 'circle-radius': 11, 'circle-color': '#0f766e', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 },
+  })
+  map.addLayer({
+    id: 'search-results-rank',
+    type: 'symbol',
+    source: 'search-results',
+    layout: { 'text-field': ['get', 'rank'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-allow-overlap': true },
+    paint: { 'text-color': '#ffffff' },
+  })
+}
+
+interface MapViewProps {
+  onBack: () => void
+  /** Whether an AI model is open, for written answers to place searches. */
+  ai: { ready: boolean; reply: ReplySettings }
+}
+
+export default function MapView({ onBack, ai }: MapViewProps) {
+  const positionRef = useRef<[number, number] | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const online = useOnline()
@@ -100,7 +140,10 @@ export default function MapView({ onBack }: { onBack: () => void }) {
       map.addControl(new NavigationControl(), 'top-right')
 
       const geolocate = new GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true })
-      geolocate.on('geolocate', () => setMessage(null))
+      geolocate.on('geolocate', (event) => {
+        positionRef.current = [event.coords.longitude, event.coords.latitude]
+        setMessage(null)
+      })
       // Fired instead of 'geolocate' when the position is outside the offline area's bounds.
       geolocate.on('outofmaxbounds', () =>
         setMessage(mode.kind === 'offline' ? `You are outside the ${mode.area.name} offline map.` : null),
@@ -124,6 +167,31 @@ export default function MapView({ onBack }: { onBack: () => void }) {
     map.fitBounds(bbox, { padding: { top: 40, left: 40, right: 60, bottom: panel + 20 }, maxZoom: 14 })
     if (map.isStyleLoaded()) showOutline(map, bbox)
     else map.once('load', () => showOutline(map, bbox))
+  }
+
+  /** Searches start from the GPS position once it is known, otherwise from the map centre. */
+  function getOrigin(): SearchOrigin | null {
+    if (positionRef.current) return { point: positionRef.current, label: 'your location' }
+    const center = mapRef.current?.getCenter()
+    return center ? { point: [center.lng, center.lat], label: 'the map centre' } : null
+  }
+
+  function showResults(places: Place[], origin: SearchOrigin) {
+    const map = mapRef.current
+    if (!map) return
+    if (map.isStyleLoaded()) showPlaces(map, places)
+    else map.once('load', () => showPlaces(map, places))
+    if (!places.length) return
+    const lons = [origin.point[0], ...places.map((p) => p.lon)]
+    const lats = [origin.point[1], ...places.map((p) => p.lat)]
+    map.fitBounds([Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)], {
+      padding: { top: 60, left: 40, right: 60, bottom: panelHeight() + 30 },
+      maxZoom: 16,
+    })
+  }
+
+  function focusPlace(place: Place) {
+    mapRef.current?.flyTo({ center: [place.lon, place.lat], zoom: 16, padding: { top: 0, left: 0, right: 0, bottom: panelHeight() } })
   }
 
   function visibleBBox(): BBox | null {
@@ -165,6 +233,10 @@ export default function MapView({ onBack }: { onBack: () => void }) {
           onViewOnline={() => setMode({ kind: 'online' })}
           onAreasChange={refreshAreas}
           visibleBBox={visibleBBox}
+          ai={ai}
+          getOrigin={getOrigin}
+          onResults={showResults}
+          onFocus={focusPlace}
         />
       </div>
     </div>

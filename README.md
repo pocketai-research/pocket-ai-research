@@ -47,6 +47,8 @@ An online world map with GPS, where you can pick a country and then drill down t
 - **Region lists:** countries are bundled ([src/map/countries.json](src/map/countries.json), generated once from OpenStreetMap). Levels below a country come from the [Overpass API](https://overpass-api.de) (with a mirror as fallback) and are cached on the device, so each list is slow only the first time. Level names per country are in [src/map/admin.ts](src/map/admin.ts).
 - **Offline areas:** tiles for the region's box, plus the style, sprite and Latin glyphs, are stored in IndexedDB and served to MapLibre through an `offline://` protocol ([src/map/offlineMap.ts](src/map/offlineMap.ts)).
 
+**Search and ask:** the Search tab finds places around your GPS position (or the map centre) in the map data itself: online from OpenFreeMap, offline from the saved area. Questions in English or Indonesian are matched to categories ("nearest hospital", "masjid terdekat", "SPBU", "apotek", ...) or to place names. Results are listed and numbered on the map with distance and direction, and when an AI model is open it writes a short answer using only those places, so it cannot invent locations ([src/map/places.ts](src/map/places.ts)).
+
 Downloads follow [OpenFreeMap's terms](https://openfreemap.org/tos/) for in-app offline downloads: at most 3,000 tiles or 50 MB per download, at most 4 parallel requests, and a User-Agent that identifies the app. The detail level therefore depends on the area's size: a district or regency gets street-level detail, a large province or a country gets a coarser map. The Android app adds the identifying User-Agent ([capacitor.config.ts](capacitor.config.ts)); browsers cannot, so the web version offers the online map only.
 
 ## How it works
@@ -110,7 +112,7 @@ Keep the keystore and its password backed up outside the repository. Never commi
 - [x] **Phase 3a**: saved conversations and Markdown-formatted replies
 - [x] **Chat tools**: copy, share and regenerate replies; reply language, length and style settings
 - [x] **AI Map 1**: online world map with country → province → regency → district selection, GPS, and offline downloads
-- [ ] **AI Map 2**: search places offline and ask the AI about them ("nearest hospital?")
+- [x] **AI Map 2**: search places (online and offline) and ask the AI about them ("nearest hospital?")
 - [ ] **AI Map 3**: offline directions drawn on the map and explained by the AI
 - [ ] **Phase 3b**: installable offline web app (PWA) and multi-threading on GitHub Pages
 - [ ] **Phase 4**: custom domain and design polish

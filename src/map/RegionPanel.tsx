@@ -5,6 +5,9 @@ import { COUNTRIES, type Country } from './countries'
 import { canDownload, downloadArea, planDownload, type DownloadProgress } from './download'
 import { detailLabel, type BBox } from './geo'
 import { deleteArea, type OfflineArea } from './offlineStore'
+import type { Place } from './places'
+import SearchPanel, { type SearchOrigin } from './SearchPanel'
+import type { ReplySettings } from '../settings'
 
 interface RegionPanelProps {
   areas: OfflineArea[]
@@ -15,6 +18,10 @@ interface RegionPanelProps {
   onViewOnline: () => void
   onAreasChange: () => void
   visibleBBox: () => BBox | null
+  ai: { ready: boolean; reply: ReplySettings }
+  getOrigin: () => SearchOrigin | null
+  onResults: (places: Place[], origin: SearchOrigin) => void
+  onFocus: (place: Place) => void
 }
 
 interface DownloadTarget {
@@ -30,7 +37,7 @@ const sameBBox = (a: BBox, b: BBox) => a.every((v, i) => Math.abs(v - b[i]) < 1e
 
 export default function RegionPanel(props: RegionPanelProps) {
   const { areas, viewingAreaId, online, onSelect, onViewOffline, onViewOnline, onAreasChange, visibleBBox } = props
-  const [tab, setTab] = useState<'regions' | 'offline'>('regions')
+  const [tab, setTab] = useState<'search' | 'regions' | 'offline'>('search')
   const [collapsed, setCollapsed] = useState(false)
   const [search, setSearch] = useState('')
   const [country, setCountry] = useState<Country | null>(null)
@@ -249,11 +256,14 @@ export default function RegionPanel(props: RegionPanelProps) {
     <section className={`region-panel${collapsed ? ' collapsed' : ''}`} aria-label="Regions and offline areas">
       <div className="panel-head">
         <div className="tabs" role="tablist">
+          <button role="tab" aria-selected={tab === 'search'} onClick={() => (setTab('search'), setCollapsed(false))}>
+            Search
+          </button>
           <button role="tab" aria-selected={tab === 'regions'} onClick={() => (setTab('regions'), setCollapsed(false))}>
             Regions
           </button>
           <button role="tab" aria-selected={tab === 'offline'} onClick={() => (setTab('offline'), setCollapsed(false))}>
-            Offline areas ({areas.length})
+            Offline ({areas.length})
           </button>
         </div>
         <button
@@ -289,7 +299,19 @@ export default function RegionPanel(props: RegionPanelProps) {
 
       {!collapsed && (
         <div className="panel-body">
-          {tab === 'regions' ? regionsTab : offlineTab}
+          {/* Kept mounted so a search and its answer survive switching tabs. */}
+          <div hidden={tab !== 'search'} className="tab-page">
+            <SearchPanel
+              area={areas.find((a) => a.id === viewingAreaId) ?? null}
+              online={online}
+              ai={props.ai}
+              getOrigin={props.getOrigin}
+              onResults={props.onResults}
+              onFocus={props.onFocus}
+            />
+          </div>
+          {tab === 'regions' && regionsTab}
+          {tab === 'offline' && offlineTab}
           {tab === 'regions' && online && canDownload && (
             <button
               className="btn ghost"

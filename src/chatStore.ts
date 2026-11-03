@@ -4,6 +4,8 @@ import type { ChatMessage } from './ai/engine'
 export interface ChatEntry extends ChatMessage {
   tokensPerSecond?: number
   error?: boolean
+  /** Document passages the reply was based on, e.g. "report.pdf p. 3". */
+  sources?: string[]
 }
 
 export interface Conversation {
@@ -11,6 +13,8 @@ export interface Conversation {
   title: string
   modelId: string
   messages: ChatEntry[]
+  /** Documents attached to this chat (see src/docs/store.ts). */
+  documentIds?: string[]
   createdAt: number
   updatedAt: number
 }

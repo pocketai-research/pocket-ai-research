@@ -4,12 +4,12 @@
 
 An AI chat assistant that runs **entirely on your phone or computer**. Download a model once, then chat any time, even with no internet connection. Your conversations never leave your device.
 
-- **Android app:** download the latest APK from [Releases](https://github.com/minusonedoge-cloud/pocket-ai-research/releases/latest)
-- **Web version:** https://minusonedoge-cloud.github.io/pocket-ai-research/
+- **Android app:** download the latest APK from [Releases](https://github.com/pocketai-research/pocket-ai-research/releases/latest)
+- **Web version:** https://pocketai-research.github.io/pocket-ai-research/
 
 ## Install on Android
 
-1. Open the [latest release](https://github.com/minusonedoge-cloud/pocket-ai-research/releases/latest) on your phone and download `PocketAiResearch-<version>.apk`.
+1. Open the [latest release](https://github.com/pocketai-research/pocket-ai-research/releases/latest) on your phone and download `PocketAiResearch-<version>.apk`.
 2. Open the file. If Android asks, allow your browser or file manager to **install unknown apps**.
 3. Tap **Install**, open **Pocket Ai Research**, choose a model and download it once (Wi-Fi recommended).
 4. From then on the chat works offline, even in airplane mode.
@@ -34,10 +34,22 @@ Requirements: Android 7.0 or newer, at least 4 GB RAM, and 0.5 to 1.1 GB of free
 |---|---|---|---|
 | Light | Qwen2.5 0.5B Instruct (Q4_K_M) | 491 MB | Phones, short questions |
 | Balanced | Qwen2.5 1.5B Instruct (Q4_K_M) | 1.1 GB | Laptops and newer phones |
+| Smart | Qwen3 1.7B (Q4_K_M, thinking mode off) | 1.1 GB | Best reasoning and Indonesian; a little slower |
 
 Under **AI replies** you can choose the reply language (English, Indonesian, or the language of your message), the length and the style. Small models follow the language setting unreliably: Indonesian replies work best with the Balanced model. Each reply can be copied, shared, or regenerated.
 
+Models must stay well under 2 GB: in WebAssembly the weights need one allocation, and a 3B model (about 2 GB, e.g. Llama 3.2 3B) downloads but cannot load. The Smart model therefore is Qwen3 1.7B with its thinking mode turned off. It uses a 3,072-token context to save memory; older messages are dropped from what a model sees when a chat gets longer than its context.
+
 Models are downloaded from Hugging Face on first use and kept in the app's private storage (the browser's Origin Private File System).
+
+## Ask your documents
+
+Tap the paperclip in a chat to attach a PDF, TXT or Markdown file, then ask about it. Everything happens on the device:
+
+- Text is extracted with [PDF.js](https://mozilla.github.io/pdf.js/) (loaded only when a PDF is opened) and split into passages of about 700 characters ([src/docs/extract.ts](src/docs/extract.ts)).
+- For each question, the best-matching passages are found with BM25 keyword search, which ignores common English and Indonesian words ([src/docs/retrieve.ts](src/docs/retrieve.ts)). No second AI model is needed, which keeps memory use low on phones. When nothing matches (for example "summarise this"), the start of the document is used.
+- The AI answers from those passages only and cites them like [1]; the sources (file and page) are listed under the reply.
+- Documents are stored in IndexedDB, stay attached to their chat, and can be deleted under **Documents** on the start page. Scanned PDFs (pictures of pages) have no text and are not supported yet.
 
 ## Map
 
@@ -110,6 +122,8 @@ Keep the keystore and its password backed up outside the repository. Never commi
 - [x] **Phase 1**: project setup and automatic deployment
 - [x] **Phase 2**: on-device AI chat with a model picker, Android app
 - [x] **Phase 3a**: saved conversations and Markdown-formatted replies
+- [x] **Smart model**: Qwen3 1.7B (3B models do not fit in WebAssembly memory)
+- [x] **Ask your documents**: PDF / TXT / Markdown, answered on the device with cited passages
 - [x] **Chat tools**: copy, share and regenerate replies; reply language, length and style settings
 - [x] **AI Map 1**: online world map with country → province → regency → district selection, GPS, and offline downloads
 - [x] **AI Map 2**: search places (online and offline) and ask the AI about them ("nearest hospital?")

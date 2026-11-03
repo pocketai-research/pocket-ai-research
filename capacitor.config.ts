@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   // Identifies the app to the services it calls. OpenFreeMap requires this for offline
   // downloads; src/map/download.ts checks for it.
-  appendUserAgent: 'PocketAiResearch (+https://github.com/minusonedoge-cloud/pocket-ai-research)',
+  appendUserAgent: 'PocketAiResearch (+https://github.com/pocketai-research/pocket-ai-research)',
 }
 
 export default config

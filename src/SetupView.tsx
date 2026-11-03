@@ -3,6 +3,8 @@ import type { ModelOption } from './ai/models'
 import Brand, { REPO_URL } from './Brand'
 import { hasWebGPU } from './deviceCheck'
 import DeviceChecks from './DeviceChecks'
+import type { DocSummary } from './docs/store'
+import { TrashIcon } from './icons'
 import type { EngineSettings, ReplySettings } from './settings'
 
 export interface LoadingState {
@@ -21,6 +23,8 @@ interface SetupViewProps {
   onSettingsChange: (settings: EngineSettings) => void
   replySettings: ReplySettings
   onReplySettingsChange: (settings: ReplySettings) => void
+  documents: DocSummary[]
+  onDeleteDocument: (doc: DocSummary) => void
   onOpen: (model: ModelOption) => void
   onDelete: (model: ModelOption) => void
   onBackToChat?: () => void
@@ -65,7 +69,7 @@ function LoadingProgress({ progress, cached }: { progress: number; cached: boole
 
 export default function SetupView(props: SetupViewProps) {
   const { models, downloaded, loading, activeId, error, notice, settings, onSettingsChange, onOpen, onDelete } = props
-  const { onBackToChat, onShowMap, replySettings, onReplySettingsChange } = props
+  const { onBackToChat, onShowMap, replySettings, onReplySettingsChange, documents, onDeleteDocument } = props
   const [gpuAvailable, setGpuAvailable] = useState(false)
 
   useEffect(() => {
@@ -82,7 +86,7 @@ export default function SetupView(props: SetupViewProps) {
               Back to chat
             </button>
           ) : (
-            <span className="badge">Preview v0.6</span>
+            <span className="badge">Preview v0.8</span>
           )}
         </div>
       </header>
@@ -124,6 +128,7 @@ export default function SetupView(props: SetupViewProps) {
                   </div>
                   <h3>{m.name}</h3>
                   <p>{m.description}</p>
+                  {m.attribution && <small className="attribution">{m.attribution}</small>}
                   {isLoading && loading ? (
                     <LoadingProgress progress={loading.progress} cached={isDownloaded} />
                   ) : (
@@ -183,6 +188,34 @@ export default function SetupView(props: SetupViewProps) {
               onChange={(creativity) => onReplySettingsChange({ ...replySettings, creativity })}
             />
           </div>
+        </section>
+
+        <section className="section">
+          <h2>Documents</h2>
+          <p className="section-intro">
+            Attach a PDF or text file in a chat with the paperclip button, then ask about it. Files are read and kept on
+            this device. Scanned PDFs (pictures of pages) are not supported yet.
+          </p>
+          {documents.length === 0 ? (
+            <p className="muted">No documents yet.</p>
+          ) : (
+            <ul className="area-list">
+              {documents.map((doc) => (
+                <li key={doc.id}>
+                  <div className="area-info">
+                    <strong>{doc.name}</strong>
+                    <small>
+                      {Math.max(1, Math.round(doc.chars / 1000))}k characters · added{' '}
+                      {new Date(doc.addedAt).toLocaleDateString('en', { day: 'numeric', month: 'short' })}
+                    </small>
+                  </div>
+                  <button className="icon-btn" aria-label={`Delete ${doc.name}`} onClick={() => onDeleteDocument(doc)}>
+                    <TrashIcon />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className="section">

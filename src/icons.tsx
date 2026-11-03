@@ -46,6 +46,18 @@ export const ArrowLeftIcon = () => (
   </svg>
 )
 
+export const PaperclipIcon = () => (
+  <svg {...base}>
+    <path d="M21 11.5l-8.5 8.5a5 5 0 0 1-7-7l9-9a3.5 3.5 0 0 1 5 5l-9 9a2 2 0 0 1-3-3l8-8" />
+  </svg>
+)
+
+export const FileIcon = () => (
+  <svg {...base} width={14} height={14}>
+    <path d="M14 3H6v18h12V7zM14 3v4h4" />
+  </svg>
+)
+
 export const CopyIcon = () => (
   <svg {...base} width={16} height={16}>
     <path d="M9 9h10v10H9zM5 15V5h10" />

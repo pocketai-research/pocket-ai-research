@@ -347,6 +347,62 @@ h2 {
   color: var(--on-accent);
 }
 
+/* Documents in a chat */
+.doc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.doc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 13px;
+}
+
+.doc-chip.muted {
+  padding-right: 10px;
+  color: var(--muted);
+}
+
+.doc-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.doc-chip button {
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.doc-error {
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.composer .icon-btn.attach {
+  width: 44px;
+  height: 44px;
+}
+
+.sources {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* Actions under a reply */
 .msg-actions {
   display: flex;
@@ -1122,5 +1178,10 @@ h2 {
   padding: 24px 0 40px;
   border-top: 1px solid var(--border);
   font-size: 14px;
+  color: var(--muted);
+}
+
+.model-card .attribution {
+  font-size: 12px;
   color: var(--muted);
 }

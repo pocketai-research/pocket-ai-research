@@ -4,7 +4,10 @@ import { describeError, generateReply, isAbortError, type ChatMessage, type Load
 import Brand from './Brand'
 import ChatHistory from './ChatHistory'
 import type { ChatEntry, Conversation } from './chatStore'
-import { CopyIcon, MapIcon, MenuIcon, PlusIcon, RefreshIcon, ShareIcon, SlidersIcon } from './icons'
+import { ACCEPTED_FILES } from './docs/extract'
+import { retrieve } from './docs/retrieve'
+import { getDocuments, type DocSummary } from './docs/store'
+import { CopyIcon, FileIcon, MapIcon, MenuIcon, PaperclipIcon, PlusIcon, RefreshIcon, ShareIcon, SlidersIcon } from './icons'
 import Markdown from './Markdown'
 import type { ReplySettings } from './settings'
 
@@ -14,6 +17,12 @@ interface ChatViewProps {
   chatId: string
   messages: ChatEntry[]
   setMessages: Dispatch<SetStateAction<ChatEntry[]>>
+  /** Documents attached to this chat; questions are answered from them. */
+  documents: DocSummary[]
+  /** Name of a file being read, or an error from reading one. */
+  attachStatus: { reading?: string; error?: string }
+  onAttach: (file: File) => void
+  onDetach: (id: string) => void
   onShowModels: () => void
   onShowMap: () => void
   onNewChat: () => void
@@ -26,6 +35,8 @@ const SUGGESTIONS = [
   'Write a short poem about the ocean.',
   'Give me three tips to focus while studying.',
 ]
+
+const DOCUMENT_SUGGESTIONS = ['Summarise this document.', 'What are the key points?']
 
 /** Clipboard API first; the textarea fallback covers WebViews that refuse it. */
 async function copyText(text: string) {
@@ -48,7 +59,8 @@ const toHistory = (entries: ChatEntry[]): ChatMessage[] =>
 
 export default function ChatView(props: ChatViewProps) {
   const { loaded, replySettings, chatId, messages, setMessages, onShowModels, onShowMap, onNewChat, onOpenChat } = props
-  const { onDeleteChat } = props
+  const { onDeleteChat, documents, attachStatus, onAttach, onDetach } = props
+  const fileRef = useRef<HTMLInputElement>(null)
   const [input, setInput] = useState('')
   const [generating, setGenerating] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -103,9 +115,17 @@ export default function ChatView(props: ChatViewProps) {
     const controller = new AbortController()
     controllerRef.current = controller
     try {
+      let context: string | undefined
+      if (documents.length) {
+        // Leave room for the reply and the chat: about 3,000 characters of excerpts in a 4,096 context.
+        const budget = Math.max(1200, ((loaded.model.contextSize ?? 4096) - 2048) * 1.5)
+        const found = retrieve(await getDocuments(documents.map((d) => d.id)), history.at(-1)?.content ?? '', budget)
+        context = found.context
+        updateLast((m) => ({ ...m, sources: found.sources }))
+      }
       const { tokensPerSecond } = await generateReply(
         history,
-        { reply: replySettings },
+        { reply: replySettings, context },
         (piece) => updateLast((m) => ({ ...m, content: m.content + piece })),
         controller.signal,
       )
@@ -190,10 +210,14 @@ export default function ChatView(props: ChatViewProps) {
         <div className="container messages-inner">
           {messages.length === 0 ? (
             <div className="empty">
-              <h2>Ask me anything.</h2>
-              <p className="section-intro">I run entirely on this device, so this chat works offline.</p>
+              <h2>{documents.length ? 'Ask about your document.' : 'Ask me anything.'}</h2>
+              <p className="section-intro">
+                {documents.length
+                  ? 'Answers come from the attached document, read on this device.'
+                  : 'I run entirely on this device, so this chat works offline. Tap the paperclip to ask about a PDF or text file.'}
+              </p>
               <div className="suggestions">
-                {SUGGESTIONS.map((s) => (
+                {(documents.length ? DOCUMENT_SUGGESTIONS : SUGGESTIONS).map((s) => (
                   <button className="suggestion" key={s} onClick={() => send(s)}>
                     {s}
                   </button>
@@ -239,6 +263,9 @@ export default function ChatView(props: ChatViewProps) {
                     )}
                   </div>
                 )}
+                {m.role === 'assistant' && !m.error && m.sources?.length ? (
+                  <div className="sources">Sources: {m.sources.map((s, n) => `[${n + 1}] ${s}`).join(' · ')}</div>
+                ) : null}
               </div>
             ))
           )}
@@ -252,7 +279,43 @@ export default function ChatView(props: ChatViewProps) {
           send(input)
         }}
       >
+        {(documents.length > 0 || attachStatus.reading || attachStatus.error) && (
+          <div className="container doc-chips">
+            {documents.map((doc) => (
+              <span className="doc-chip" key={doc.id}>
+                <FileIcon />
+                <span className="doc-name">{doc.name}</span>
+                <button type="button" aria-label={`Remove ${doc.name} from this chat`} onClick={() => onDetach(doc.id)}>
+                  ×
+                </button>
+              </span>
+            ))}
+            {attachStatus.reading && <span className="doc-chip muted">Reading {attachStatus.reading}…</span>}
+            {attachStatus.error && <span className="doc-error">{attachStatus.error}</span>}
+          </div>
+        )}
         <div className="container composer-inner">
+          <button
+            type="button"
+            className="icon-btn attach"
+            aria-label="Attach a document"
+            title="Attach a PDF or text file"
+            onClick={() => fileRef.current?.click()}
+            disabled={generating || Boolean(attachStatus.reading)}
+          >
+            <PaperclipIcon />
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept={ACCEPTED_FILES}
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) onAttach(file)
+            }}
+          />
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -262,7 +325,7 @@ export default function ChatView(props: ChatViewProps) {
                 send(input)
               }
             }}
-            placeholder="Message Pocket Ai Research"
+            placeholder={documents.length ? 'Ask about your document' : 'Message Pocket Ai Research'}
             rows={1}
             aria-label="Message"
           />

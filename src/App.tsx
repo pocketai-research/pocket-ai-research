@@ -22,6 +22,8 @@ import {
   type ReplySettings,
 } from './settings'
 import SetupView, { type LoadingState } from './SetupView'
+import { extractChunks } from './docs/extract'
+import { deleteDocument, getDocuments, listDocuments, saveDocument, summarize, type DocSummary } from './docs/store'
 
 // MapLibre is large, so the map only loads when it is opened.
 const MapView = lazy(() => import('./map/MapView'))
@@ -70,6 +72,15 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [settings, setSettings] = useState<EngineSettings>(readEngineSettings)
   const [replySettings, setReplySettings] = useState<ReplySettings>(readReplySettings)
+  // Documents attached to the open chat, and every document stored on the device.
+  const [chatDocs, setChatDocs] = useState<DocSummary[]>([])
+  const [allDocs, setAllDocs] = useState<DocSummary[]>([])
+  const [attachStatus, setAttachStatus] = useState<{ reading?: string; error?: string }>({})
+
+  const refreshDocuments = () => listDocuments().then(setAllDocs)
+  useEffect(() => {
+    refreshDocuments()
+  }, [])
   const [notice, setNotice] = useState(crashNotice)
   // JSON of the messages last written to (or read from) storage, to skip redundant saves.
   const savedSnapshot = useRef('[]')
@@ -120,9 +131,11 @@ export default function App() {
     })
   }, [])
 
-  function persist(meta: ChatMeta, entries: ChatEntry[]) {
+  const snapshotOf = (entries: ChatEntry[], docs: DocSummary[]) => JSON.stringify([entries, docs.map((d) => d.id)])
+
+  function persist(meta: ChatMeta, entries: ChatEntry[], docs: DocSummary[]) {
     const saved = entries.filter((m) => m.content)
-    const snapshot = JSON.stringify(saved)
+    const snapshot = snapshotOf(saved, docs)
     if (!saved.length || snapshot === savedSnapshot.current) return
     savedSnapshot.current = snapshot
     saveConversation({
@@ -130,36 +143,74 @@ export default function App() {
       title: titleFrom(saved),
       modelId: active?.model.id ?? '',
       messages: saved,
+      documentIds: docs.map((d) => d.id),
       updatedAt: Date.now(),
     })
   }
 
   // Debounced so a streaming reply is not written to storage on every token.
   useEffect(() => {
-    const timer = setTimeout(() => persist(chatMeta, messages), 500)
+    const timer = setTimeout(() => persist(chatMeta, messages, chatDocs), 500)
     return () => clearTimeout(timer)
   })
 
   function showConversation(conversation: Conversation) {
     setChatMeta({ id: conversation.id, createdAt: conversation.createdAt })
     setMessages(conversation.messages)
-    savedSnapshot.current = JSON.stringify(conversation.messages)
+    setAttachStatus({})
+    getDocuments(conversation.documentIds ?? []).then((docs) => {
+      const summaries = docs.map(summarize)
+      setChatDocs(summaries)
+      savedSnapshot.current = snapshotOf(conversation.messages, summaries)
+    })
   }
 
   function resetChat() {
     setChatMeta(newChatMeta())
     setMessages([])
-    savedSnapshot.current = '[]'
+    setChatDocs([])
+    setAttachStatus({})
+    savedSnapshot.current = snapshotOf([], [])
+  }
+
+  async function attachDocument(file: File) {
+    setAttachStatus({ reading: file.name })
+    try {
+      const chunks = await extractChunks(file)
+      if (!chunks.length) {
+        throw new Error('No text found in this file. Scanned PDFs (pictures of pages) are not supported yet.')
+      }
+      const doc = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        chars: chunks.reduce((sum, c) => sum + c.text.length, 0),
+        addedAt: Date.now(),
+        chunks,
+      }
+      await saveDocument(doc)
+      setChatDocs((docs) => [...docs, summarize(doc)])
+      setAttachStatus({})
+      refreshDocuments()
+    } catch (err) {
+      setAttachStatus({ error: `Could not read ${file.name}: ${err instanceof Error ? err.message : String(err)}` })
+    }
+  }
+
+  async function removeDocument(doc: DocSummary) {
+    if (!confirm(`Delete ${doc.name} from this device? Chats that used it will no longer see it.`)) return
+    await deleteDocument(doc.id)
+    setChatDocs((docs) => docs.filter((d) => d.id !== doc.id))
+    refreshDocuments()
   }
 
   // Switching chats flushes the current one first, since its debounced save may still be pending.
   function startNewChat() {
-    persist(chatMeta, messages)
+    persist(chatMeta, messages, chatDocs)
     resetChat()
   }
 
   function openConversation(conversation: Conversation) {
-    persist(chatMeta, messages)
+    persist(chatMeta, messages, chatDocs)
     showConversation(conversation)
   }
 
@@ -196,6 +247,10 @@ export default function App() {
         chatId={chatMeta.id}
         messages={messages}
         setMessages={setMessages}
+        documents={chatDocs}
+        attachStatus={attachStatus}
+        onAttach={attachDocument}
+        onDetach={(id) => setChatDocs((docs) => docs.filter((d) => d.id !== id))}
         onShowModels={() => setView('setup')}
         onShowMap={showMap}
         onNewChat={startNewChat}
@@ -217,6 +272,8 @@ export default function App() {
       onSettingsChange={changeSettings}
       replySettings={replySettings}
       onReplySettingsChange={changeReplySettings}
+      documents={allDocs}
+      onDeleteDocument={removeDocument}
       onOpen={openModel}
       onDelete={removeModel}
       onBackToChat={active ? () => setView('chat') : undefined}

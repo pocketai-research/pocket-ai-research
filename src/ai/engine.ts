@@ -102,36 +102,50 @@ async function doLoadModel(
 ): Promise<LoadedModel> {
   if (loaded?.model.id === model.id && JSON.stringify(loaded.settings) === JSON.stringify(settings)) return loaded
   await unloadModel()
+  // Without this, the browser may delete downloaded models when the device runs low on space.
+  await navigator.storage?.persist?.().catch(() => false)
 
   const params = {
-    n_ctx: CONTEXT_SIZE,
+    n_ctx: model.contextSize ?? CONTEXT_SIZE,
     n_batch: BATCH_SIZE,
     n_ubatch: BATCH_SIZE,
+    // Parse the model's chat template with Jinja, as llama-server does; Qwen3's switch for its
+    // thinking mode only works through it.
+    jinja: true,
+    ...(model.thinking === false ? { reasoning: false } : {}),
     // n_gpu_layers: 0 makes wllama skip WebGPU device setup entirely.
     ...(settings.gpu ? {} : { n_gpu_layers: 0 }),
     ...(settings.singleThread ? { n_threads: 1 } : {}),
     progressCallback: ({ loaded: done, total }: { loaded: number; total: number }) => onProgress(total ? done / total : 0),
   }
 
-  let instance = createWllama()
   let usedGpu = settings.gpu
-  try {
-    await instance.loadModelFromUrl(model.url, params)
-  } catch (err) {
-    await instance.exit().catch(() => {})
-    if (err instanceof WllamaError && err.type === 'download_error') throw err
-    if (isFileReadError(err)) {
-      // Seen right after downloading another model in the same session: the browser briefly
-      // refuses to read the cached file. A fresh instance a moment later usually succeeds.
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-    } else if (!settings.gpu) {
-      throw err
-    } else {
-      // Some GPU drivers fail under WebGPU. The file is cached by now, so retry on the CPU.
-      usedGpu = false
-    }
+  // The browser sometimes refuses to read the cached file at first (seen right after a download
+  // and when the app reopens a model on start); later attempts wait longer.
+  const readRetryDelays = [1000, 3000, 8000, 15000]
+  let instance: Wllama
+  for (let attempt = 0; ; attempt++) {
     instance = createWllama()
-    await instance.loadModelFromUrl(model.url, usedGpu ? params : { ...params, n_gpu_layers: 0 })
+    try {
+      await instance.loadModelFromUrl(model.url, usedGpu ? params : { ...params, n_gpu_layers: 0 })
+      // wllama resolves even when llama.cpp could not load the model, e.g. when WebAssembly
+      // memory has no room for its weights; an empty vocabulary gives that away.
+      if (!instance.getLoadedContextInfo().n_vocab) {
+        throw new WllamaError('The model could not be loaded: not enough memory for its weights.', 'load_error')
+      }
+      break
+    } catch (err) {
+      await instance.exit().catch(() => {})
+      if (err instanceof WllamaError && err.type === 'download_error') throw err
+      if (isFileReadError(err) && attempt < readRetryDelays.length) {
+        await new Promise((resolve) => setTimeout(resolve, readRetryDelays[attempt]))
+      } else if (usedGpu && !isFileReadError(err)) {
+        // Some GPU drivers fail under WebGPU. The file is cached by now, so retry on the CPU.
+        usedGpu = false
+      } else {
+        throw err
+      }
+    }
   }
 
   wllama = instance
@@ -177,31 +191,46 @@ export async function generateReply(
   if (!wllama || !loaded) throw new Error('No model is loaded.')
   markBusy({ modelId: loaded.model.id, phase: 'replying', settings: loaded.settings })
   try {
-    return await streamReply(wllama, history, options, onText, signal)
+    return await streamReply(wllama, loaded.model.contextSize ?? CONTEXT_SIZE, history, options, onText, signal)
   } finally {
     clearBusy()
   }
 }
 
+// Rough token count (about 3 characters per token, on the safe side for Indonesian text).
+const estimateTokens = (text: string) => Math.ceil(text.length / 3) + 4
+
+/** Drops the oldest messages until the prompt and the reply fit in the context window. */
+function fitHistory(history: ChatMessage[], budget: number) {
+  const kept = history.slice(-MAX_HISTORY)
+  let used = kept.reduce((sum, m) => sum + estimateTokens(m.content), 0)
+  while (kept.length > 1 && used > budget) used -= estimateTokens(kept.shift()!.content)
+  return kept
+}
+
 async function streamReply(
   instance: Wllama,
+  contextSize: number,
   history: ChatMessage[],
   options: ReplyOptions,
   onText: (piece: string) => void,
   signal: AbortSignal,
 ): Promise<{ tokensPerSecond?: number }> {
-  const recent = history.slice(-MAX_HISTORY)
+  const system = systemPrompt(options)
+  // A small context leaves at most half of it for the reply.
+  const maxTokens = Math.min(LENGTHS[options.reply.length].maxTokens, Math.floor(contextSize / 2))
+  const recent = fitHistory(history, contextSize - maxTokens - estimateTokens(system) - 64)
   // Small models follow the language of the last message over the system prompt, so a fixed
   // reply language is repeated there too (sent to the model only, never shown).
   const last = recent.at(-1)
   if (last?.role === 'user' && options.reply.language !== 'auto') {
     recent[recent.length - 1] = { ...last, content: `${last.content}\n\n(${LANGUAGE_RULES[options.reply.language]})` }
   }
-  const messages: ChatCompletionMessage[] = [{ role: 'system', content: systemPrompt(options) }, ...recent]
+  const messages: ChatCompletionMessage[] = [{ role: 'system', content: system }, ...recent]
   const stream = await instance.createChatCompletion({
     messages,
     stream: true,
-    max_tokens: LENGTHS[options.reply.length].maxTokens,
+    max_tokens: maxTokens,
     temperature: TEMPERATURES[options.reply.creativity],
     top_p: 0.9,
     penalty_repeat: 1.1,

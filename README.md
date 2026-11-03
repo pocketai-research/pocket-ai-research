@@ -5,7 +5,7 @@
 An AI chat assistant that runs **entirely on your phone or computer**. Download a model once, then chat any time, even with no internet connection. Your conversations never leave your device.
 
 - **Android app:** download the latest APK from [Releases](https://github.com/pocketai-research/pocket-ai-research/releases/latest)
-- **Web version:** https://pocketai-research.github.io/pocket-ai-research/
+- **Web version:** https://pocketai-research.github.io/pocket-ai-research/ (installable, works offline)
 
 ## Install on Android
 
@@ -42,6 +42,10 @@ Models must stay well under 2 GB: in WebAssembly the weights need one allocation
 
 Models are downloaded from Hugging Face on first use and kept in the app's private storage (the browser's Origin Private File System).
 
+## Web app (PWA)
+
+The web version is an installable Progressive Web App. A service worker precaches the whole app, including the AI engine's WebAssembly (about 13 MB), so after the first visit the site opens with no internet. Use **Install app** on the start page, or the browser's install option, to add it to the home screen or desktop. Downloaded models, chats, documents and offline map areas are stored in the browser either way. The Android app does not register the service worker: its files ship inside the APK.
+
 ## Ask your documents
 
 Tap the paperclip in a chat to attach a PDF, TXT or Markdown file, then ask about it. Everything happens on the device:
@@ -67,7 +71,7 @@ Downloads follow [OpenFreeMap's terms](https://openfreemap.org/tos/) for in-app 
 
 - One codebase: a Vite + React + TypeScript web app. [Capacitor](https://capacitorjs.com) wraps the same app as an Android APK.
 - The model runs with [wllama](https://github.com/ngxson/wllama) (llama.cpp compiled to WebAssembly). It runs on the CPU by default; GPU acceleration through WebGPU is an experimental setting. If the app dies while a model loads or replies (usually out of memory), the next launch explains what happened and steps the settings down (GPU off, then one CPU thread).
-- Cross-origin isolation headers let wllama use several CPU threads, which roughly doubles speed. The Android app adds them in [MainActivity.java](android/app/src/main/java/com/pocketairesearch/app/MainActivity.java) and the local dev server in [vite.config.ts](vite.config.ts). GitHub Pages cannot set custom headers, so the hosted web version currently runs on one thread (Phase 3 adds a service worker to fix this).
+- Cross-origin isolation headers let wllama use several CPU threads, which roughly doubles speed. The Android app adds them in [MainActivity.java](android/app/src/main/java/com/pocketairesearch/app/MainActivity.java) and the local dev server in [vite.config.ts](vite.config.ts). GitHub Pages cannot set custom headers, so on the web the service worker ([src/sw.js](src/sw.js)) adds them; on the first visit the page reloads once when the worker takes over.
 - There is no backend server or login. Chats are saved on the device in IndexedDB, and replies are rendered as Markdown without ever rendering raw HTML.
 
 See [docs/CONCEPT.md](docs/CONCEPT.md) for the full concept and usage guide.
@@ -128,6 +132,6 @@ Keep the keystore and its password backed up outside the repository. Never commi
 - [x] **AI Map 1**: online world map with country → province → regency → district selection, GPS, and offline downloads
 - [x] **AI Map 2**: search places (online and offline) and ask the AI about them ("nearest hospital?")
 - [ ] **AI Map 3**: offline directions drawn on the map and explained by the AI
-- [ ] **Phase 3b**: installable offline web app (PWA) and multi-threading on GitHub Pages
+- [x] **Phase 3b**: installable offline web app (PWA) and multi-threading on GitHub Pages
 - [ ] **Phase 4**: custom domain and design polish
 - [ ] **Phase 5**: ask your documents, task templates, voice input

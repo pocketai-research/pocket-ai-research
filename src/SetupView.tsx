@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ModelOption } from './ai/models'
 import Brand, { REPO_URL } from './Brand'
+import { useInstallPrompt } from './pwa'
 import { hasWebGPU } from './deviceCheck'
 import DeviceChecks from './DeviceChecks'
 import type { DocSummary } from './docs/store'
@@ -71,6 +72,7 @@ export default function SetupView(props: SetupViewProps) {
   const { models, downloaded, loading, activeId, error, notice, settings, onSettingsChange, onOpen, onDelete } = props
   const { onBackToChat, onShowMap, replySettings, onReplySettingsChange, documents, onDeleteDocument } = props
   const [gpuAvailable, setGpuAvailable] = useState(false)
+  const install = useInstallPrompt()
 
   useEffect(() => {
     hasWebGPU().then(setGpuAvailable)
@@ -86,7 +88,7 @@ export default function SetupView(props: SetupViewProps) {
               Back to chat
             </button>
           ) : (
-            <span className="badge">Preview v0.8</span>
+            <span className="badge">Preview v0.9</span>
           )}
         </div>
       </header>
@@ -99,6 +101,11 @@ export default function SetupView(props: SetupViewProps) {
             Pick a model and download it once. After that, Pocket Ai Research works with no internet, no account, and nothing
             leaving your device.
           </p>
+          {install && (
+            <button className="btn primary install" onClick={install}>
+              Install app
+            </button>
+          )}
         </section>
 
         {notice && (

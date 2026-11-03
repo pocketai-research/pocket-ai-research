@@ -74,6 +74,8 @@ export interface BusyMarker {
 
 export const markBusy = (marker: BusyMarker) => write(BUSY_KEY, JSON.stringify(marker))
 export const clearBusy = () => write(BUSY_KEY, null)
+/** True while a model is loading or replying. */
+export const isBusy = () => read(BUSY_KEY) !== null
 
 export function takeBusyMarker(): BusyMarker | null {
   const raw = read(BUSY_KEY)

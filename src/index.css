@@ -1118,19 +1118,103 @@ h2 {
   list-style: none;
 }
 
-.place-list button {
+.place-list li {
   display: flex;
   align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.place-main {
+  display: flex;
+  flex: 1;
+  align-items: center;
   gap: 10px;
-  width: 100%;
+  min-width: 0;
   padding: 8px 4px;
   border: 0;
-  border-bottom: 1px solid var(--border);
   background: none;
   color: var(--text);
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.place-go {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px 5px 9px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.place-go:hover {
+  background: var(--accent-soft);
+}
+
+/* Directions */
+
+.directions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.directions .list-title {
+  margin: 0;
+}
+
+.mode-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.mode-switch button {
+  padding: 5px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.mode-switch button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.route-summary {
+  margin: 0;
+}
+
+.route-steps {
+  align-self: stretch;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.route-steps li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.route-steps li small {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .place-rank {

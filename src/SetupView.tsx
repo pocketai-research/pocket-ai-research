@@ -88,7 +88,7 @@ export default function SetupView(props: SetupViewProps) {
               Back to chat
             </button>
           ) : (
-            <span className="badge">Preview v0.11</span>
+            <span className="badge">Preview v0.12</span>
           )}
         </div>
       </header>

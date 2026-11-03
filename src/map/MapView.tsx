@@ -16,6 +16,7 @@ import type { BBox } from './geo'
 import { offlineStyle } from './offlineMap'
 import { listAreas, type OfflineArea } from './offlineStore'
 import type { Place } from './places'
+import type { Route } from './route'
 import RegionPanel from './RegionPanel'
 import type { SearchOrigin } from './SearchPanel'
 import type { ReplySettings } from '../settings'
@@ -60,6 +61,15 @@ function showOutline(map: MapLibreMap, bbox: BBox) {
   })
 }
 
+/**
+ * Runs draw once the map can take new sources and layers. isStyleLoaded() is also false while
+ * tiles are loading (after a move, for example), when 'load' has long fired, so wait for 'idle'.
+ */
+function whenReady(map: MapLibreMap, draw: () => void) {
+  if (map.isStyleLoaded()) draw()
+  else map.once('idle', draw)
+}
+
 const panelHeight = () => document.querySelector('.region-panel')?.getBoundingClientRect().height ?? 0
 
 /** Numbered dots for search results. */
@@ -88,6 +98,23 @@ function showPlaces(map: MapLibreMap, places: Place[]) {
     layout: { 'text-field': ['get', 'rank'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-allow-overlap': true },
     paint: { 'text-color': '#ffffff' },
   })
+}
+
+/** The route as a line under the result dots, with a white casing so it shows on any road colour. */
+function showRoute(map: MapLibreMap, route: Route | null) {
+  const data = {
+    type: 'FeatureCollection' as const,
+    features: route
+      ? [{ type: 'Feature' as const, properties: {}, geometry: { type: 'LineString' as const, coordinates: route.line } }]
+      : [],
+  }
+  const source = map.getSource('route') as GeoJSONSource | undefined
+  if (source) return source.setData(data)
+  map.addSource('route', { type: 'geojson', data })
+  const below = map.getLayer('search-results-dot') ? 'search-results-dot' : undefined
+  const layout = { 'line-join': 'round' as const, 'line-cap': 'round' as const }
+  map.addLayer({ id: 'route-casing', type: 'line', source: 'route', layout, paint: { 'line-color': '#ffffff', 'line-width': 9 } }, below)
+  map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout, paint: { 'line-color': '#2563eb', 'line-width': 5 } }, below)
 }
 
 interface MapViewProps {
@@ -165,8 +192,7 @@ export default function MapView({ onBack, ai }: MapViewProps) {
     if (!map || mode?.kind !== 'online') return
     const panel = document.querySelector('.region-panel')?.getBoundingClientRect().height ?? 0
     map.fitBounds(bbox, { padding: { top: 40, left: 40, right: 60, bottom: panel + 20 }, maxZoom: 14 })
-    if (map.isStyleLoaded()) showOutline(map, bbox)
-    else map.once('load', () => showOutline(map, bbox))
+    whenReady(map, () => showOutline(map, bbox))
   }
 
   /** Searches start from the GPS position once it is known, otherwise from the map centre. */
@@ -179,14 +205,26 @@ export default function MapView({ onBack, ai }: MapViewProps) {
   function showResults(places: Place[], origin: SearchOrigin) {
     const map = mapRef.current
     if (!map) return
-    if (map.isStyleLoaded()) showPlaces(map, places)
-    else map.once('load', () => showPlaces(map, places))
+    whenReady(map, () => showPlaces(map, places))
     if (!places.length) return
     const lons = [origin.point[0], ...places.map((p) => p.lon)]
     const lats = [origin.point[1], ...places.map((p) => p.lat)]
     map.fitBounds([Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)], {
       padding: { top: 60, left: 40, right: 60, bottom: panelHeight() + 30 },
       maxZoom: 16,
+    })
+  }
+
+  function drawRoute(route: Route | null) {
+    const map = mapRef.current
+    if (!map) return
+    whenReady(map, () => showRoute(map, route))
+    if (!route) return
+    const lons = route.line.map(([lon]) => lon)
+    const lats = route.line.map(([, lat]) => lat)
+    map.fitBounds([Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)], {
+      padding: { top: 60, left: 40, right: 60, bottom: panelHeight() + 30 },
+      maxZoom: 17,
     })
   }
 
@@ -237,6 +275,7 @@ export default function MapView({ onBack, ai }: MapViewProps) {
           getOrigin={getOrigin}
           onResults={showResults}
           onFocus={focusPlace}
+          onRoute={drawRoute}
         />
       </div>
     </div>

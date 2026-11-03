@@ -58,6 +58,12 @@ export const FileIcon = () => (
   </svg>
 )
 
+export const RouteIcon = () => (
+  <svg {...base} width={16} height={16}>
+    <path d="M6 20v-7a4 4 0 0 1 4-4h9M15 5l4 4-4 4" />
+  </svg>
+)
+
 export const CameraIcon = () => (
   <svg {...base}>
     <path d="M4 8h3l2-3h6l2 3h3v11H4z" />

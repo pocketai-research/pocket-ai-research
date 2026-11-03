@@ -77,6 +77,10 @@ An online world map with GPS, where you can pick a country and then drill down t
 
 **Search and ask:** the Search tab finds places around your GPS position (or the map centre) in the map data itself: online from OpenFreeMap, offline from the saved area. Questions in English or Indonesian are matched to categories ("nearest hospital", "masjid terdekat", "SPBU", "apotek", ...) or to place names. Results are listed and numbered on the map with distance and direction, and when an AI model is open it writes a short answer using only those places, so it cannot invent locations ([src/map/places.ts](src/map/places.ts)).
 
+**Directions:** tap **Go** next to a place, or ask the way ("route to the nearest hospital", "rute ke SPBU terdekat", "jalan kaki ke masjid terdekat"). The route is worked out on the device from the roads in the same map tiles, online or in an offline area, for walking or for a car or motorbike (one-way streets respected). It is drawn on the map with the distance, an estimated time and turn-by-turn steps with street names, and the AI explains it using only those steps ([src/map/route.ts](src/map/route.ts)).
+
+The tiles are made for drawing, not routing, so the road network is rebuilt from them: roads split at tile edges are joined, and junctions that the tiles' simplification removed are restored where a road ends on, or crosses, another (bridges and tunnels excepted). A* then searches it in a Web Worker. Limits, stated in the app too: no traffic, turn restrictions or road closures; travel times use typical town speeds; routes reach up to about 20 km on street-level data, and longer ones use a coarser zoom level with main roads only. An offline area must be detailed enough (neighbourhood level or better) for directions.
+
 Downloads follow [OpenFreeMap's terms](https://openfreemap.org/tos/) for in-app offline downloads: at most 3,000 tiles or 50 MB per download, at most 4 parallel requests, and a User-Agent that identifies the app. The detail level therefore depends on the area's size: a district or regency gets street-level detail, a large province or a country gets a coarser map. The Android app adds the identifying User-Agent ([capacitor.config.ts](capacitor.config.ts)); browsers cannot, so the web version offers the online map only.
 
 ## How it works
@@ -143,7 +147,7 @@ Keep the keystore and its password backed up outside the repository. Never commi
 - [x] **Chat tools**: copy, share and regenerate replies; reply language, length and style settings
 - [x] **AI Map 1**: online world map with country → province → regency → district selection, GPS, and offline downloads
 - [x] **AI Map 2**: search places (online and offline) and ask the AI about them ("nearest hospital?")
-- [ ] **AI Map 3**: offline directions drawn on the map and explained by the AI
+- [x] **AI Map 3**: offline directions drawn on the map and explained by the AI
 - [x] **Read photos**: ask about a photo with the Vision model (InternVL3 1B)
 - [x] **Voice**: speak messages and have replies read aloud
 - [x] **Phase 3b**: installable offline web app (PWA) and multi-threading on GitHub Pages

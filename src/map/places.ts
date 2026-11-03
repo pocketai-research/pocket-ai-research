@@ -61,20 +61,36 @@ export interface PlaceQuery {
   category: Category | null
   /** Words to match in place names when no category was recognised. */
   text: string
+  /** Asks the way there ("route to…", "rute ke…"): show directions to the first place found. */
+  route: boolean
+  /** "walk", "jalan kaki": directions on foot. */
+  walk: boolean
 }
 
+// Longest first, so "how do i get to" is removed whole.
+const ROUTE_PHRASES = [
+  'jalan kaki menuju', 'jalan kaki ke', 'walking to', 'how do i get to', 'how can i get to', 'how to get to', 'how to go to', 'directions to', 'direction to',
+  'take me to', 'navigate to', 'route to', 'walk to', 'way to', 'go to',
+  'bagaimana cara ke', 'cara pergi ke', 'cara menuju', 'jalan menuju', 'rute menuju', 'arah menuju',
+  'rute ke', 'arah ke', 'jalan ke', 'cara ke', 'pergi ke', 'antar ke', 'menuju ke', 'menuju', 'rute', 'directions',
+]
+const WALK_WORDS = ['jalan kaki', 'on foot', 'walking', 'walk']
+
 export function parseQuery(input: string): PlaceQuery {
-  const lower = ` ${input.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ')} `
+  let lower = ` ${input.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ')} `
+  const walk = WALK_WORDS.some((w) => lower.includes(` ${w} `))
+  const route = ROUTE_PHRASES.some((phrase) => lower.includes(` ${phrase} `))
+  for (const phrase of [...ROUTE_PHRASES, ...WALK_WORDS]) lower = lower.replaceAll(` ${phrase} `, ' ')
   // Longest phrase first, so "rumah sakit" wins over shorter words.
   const matches = CATEGORIES.flatMap((category) => category.words.map((word) => ({ category, word })))
     .filter(({ word }) => lower.includes(` ${word} `))
     .sort((a, b) => b.word.length - a.word.length)
-  if (matches.length) return { category: matches[0].category, text: '' }
+  if (matches.length) return { category: matches[0].category, text: '', route, walk }
   const text = lower
     .split(/\s+/)
     .filter((w) => w && !STOP_WORDS.has(w))
     .join(' ')
-  return { category: null, text }
+  return { category: null, text, route, walk }
 }
 
 export const describeQuery = (query: PlaceQuery) => query.category?.label ?? `places named “${query.text}”`
@@ -103,6 +119,8 @@ let onlineTemplate: Promise<string> | null = null
 const onlineTiles = new Map<string, Promise<ArrayBuffer | undefined>>()
 
 function fetchOnlineTile(z: number, x: number, y: number) {
+  // Directions read up to 150 tiles; keep the cache from growing without bound.
+  if (onlineTiles.size > 400) onlineTiles.clear()
   onlineTemplate ??= fetch('https://tiles.openfreemap.org/planet')
     .then((res) => res.json())
     .then((tileJson) => tileJson.tiles[0] as string)
@@ -116,6 +134,10 @@ function fetchOnlineTile(z: number, x: number, y: number) {
   }
   return tile
 }
+
+/** A vector tile from the offline area, or from OpenFreeMap when no area is open. */
+export const loadTile = (area: OfflineArea | null, z: number, x: number, y: number) =>
+  area ? getTile(`${area.id}/${z}/${x}/${y}`) : fetchOnlineTile(z, x, y)
 
 function boxAround([lon, lat]: [number, number], metres: number): BBox {
   const dLat = metres / 111_320
@@ -152,7 +174,7 @@ export async function searchPlaces(
     const reads: Promise<void>[] = []
     for (let x = x0; x <= x1; x++) {
       for (let y = y0; y <= y1; y++) {
-        const read = (area ? getTile(`${area.id}/${zoom}/${x}/${y}`) : fetchOnlineTile(zoom, x, y)).then((data) => {
+        const read = loadTile(area, zoom, x, y).then((data) => {
           if (!data || data.byteLength === 0) return
           const layer = new VectorTile(new PbfReader(data)).layers.poi
           for (let i = 0; layer && i < layer.length; i++) {

@@ -6,6 +6,7 @@ import { canDownload, downloadArea, planDownload, type DownloadProgress } from '
 import { detailLabel, type BBox } from './geo'
 import { deleteArea, type OfflineArea } from './offlineStore'
 import type { Place } from './places'
+import type { Route } from './route'
 import SearchPanel, { type SearchOrigin } from './SearchPanel'
 import type { ReplySettings } from '../settings'
 
@@ -22,6 +23,7 @@ interface RegionPanelProps {
   getOrigin: () => SearchOrigin | null
   onResults: (places: Place[], origin: SearchOrigin) => void
   onFocus: (place: Place) => void
+  onRoute: (route: Route | null) => void
 }
 
 interface DownloadTarget {
@@ -308,6 +310,7 @@ export default function RegionPanel(props: RegionPanelProps) {
               getOrigin={props.getOrigin}
               onResults={props.onResults}
               onFocus={props.onFocus}
+              onRoute={props.onRoute}
             />
           </div>
           {tab === 'regions' && regionsTab}

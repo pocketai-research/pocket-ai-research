@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import { Share } from '@capacitor/share'
 import { describeError, generateReply, isAbortError, type ChatMessage, type LoadedModel } from './ai/engine'
 import Brand from './Brand'
@@ -23,13 +23,19 @@ import {
   StopIcon,
 } from './icons'
 import Markdown from './Markdown'
-import { photoToDataUrl } from './photo'
+import { DETAIL_PHOTO_SIZE, PHOTO_SIZE, photoToDataUrl } from './photo'
 import type { ReplySettings } from './settings'
 import { canListen, listen, speak, speechLanguage, stopListening, stopSpeaking } from './voice'
 
 interface ChatViewProps {
   loaded: LoadedModel
   replySettings: ReplySettings
+  onReplySettingsChange: (settings: ReplySettings) => void
+  /** The user's instructions for this chat, added to the system prompt. */
+  instructions: string
+  onInstructionsChange: (instructions: string) => void
+  /** Shown above the messages, e.g. that a new version of the app is available. */
+  banner?: ReactNode
   chatId: string
   messages: ChatEntry[]
   setMessages: Dispatch<SetStateAction<ChatEntry[]>>
@@ -56,6 +62,13 @@ const SUGGESTIONS = [
 
 const DOCUMENT_SUGGESTIONS = ['Summarise this document.', 'What are the key points?']
 
+const INSTRUCTION_PRESETS = [
+  'Answer briefly, in two or three sentences.',
+  'You are a patient maths teacher. Explain step by step.',
+  'Explain things simply, as if to a 12-year-old.',
+  'Always reply in casual Indonesian.',
+]
+
 /** Clipboard API first; the textarea fallback covers WebViews that refuse it. */
 async function copyText(text: string) {
   try {
@@ -73,15 +86,17 @@ async function copyText(text: string) {
 }
 
 const toHistory = (entries: ChatEntry[]): ChatMessage[] =>
-  entries.filter((m) => !m.error && m.content).map(({ role, content, image }) => ({ role, content, image }))
+  entries.filter((m) => !m.error && m.content).map(({ role, content, image, detail }) => ({ role, content, image, detail }))
 
 export default function ChatView(props: ChatViewProps) {
   const { loaded, replySettings, chatId, messages, setMessages, onShowModels, onShowMap, onNewChat, onOpenChat } = props
   const { onDeleteChat, documents, attachStatus, onAttach, onDetach, onUseVisionModel } = props
+  const { onReplySettingsChange, instructions, onInstructionsChange, banner } = props
   const fileRef = useRef<HTMLInputElement>(null)
   const photoRef = useRef<HTMLInputElement>(null)
-  // A photo waiting to be sent with the next message, and whether to explain that it needs the vision model.
-  const [photo, setPhoto] = useState<string | null>(null)
+  // A photo waiting to be sent with the next message (kept with its file so it can be redone in
+  // detail), and whether to explain that it needs the vision model.
+  const [photo, setPhoto] = useState<{ file: File; url: string; detail: boolean } | null>(null)
   const [photoNotice, setPhotoNotice] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [generating, setGenerating] = useState(false)
@@ -91,6 +106,8 @@ export default function ChatView(props: ChatViewProps) {
   const [listening, setListening] = useState(false)
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null)
   const [voiceError, setVoiceError] = useState<string | null>(null)
+  const [instructionsOpen, setInstructionsOpen] = useState(false)
+  const [instructionsDraft, setInstructionsDraft] = useState('')
   const controllerRef = useRef<AbortController | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -108,11 +125,11 @@ export default function ChatView(props: ChatViewProps) {
     setMessages((prev) => [...prev.slice(0, -1), patch(prev[prev.length - 1])])
 
   function send(text: string) {
-    const image = photo ?? undefined
+    const image = photo?.url
     const content = text.trim() || (image ? 'Describe this photo.' : '')
     if (!content || generating) return
     stopSpeaking()
-    const message: ChatEntry = { role: 'user', content, image }
+    const message: ChatEntry = { role: 'user', content, image, ...(photo?.detail ? { detail: true } : {}) }
     setMessages((prev) => [...prev, message, { role: 'assistant', content: '' }])
     setInput('')
     setPhoto(null)
@@ -130,10 +147,27 @@ export default function ChatView(props: ChatViewProps) {
 
   async function addPhoto(file: File) {
     try {
-      setPhoto(await photoToDataUrl(file))
+      setPhoto({ file, url: await photoToDataUrl(file), detail: false })
     } catch {
       setPhotoNotice('This image could not be opened. Try a JPEG or PNG photo.')
     }
+  }
+
+  /** Redoes the waiting photo at the size for detail (several tiles) or back at one tile. */
+  async function togglePhotoDetail() {
+    if (!photo) return
+    const detail = !photo.detail
+    try {
+      const url = await photoToDataUrl(photo.file, detail ? DETAIL_PHOTO_SIZE : PHOTO_SIZE)
+      setPhoto((current) => (current?.file === photo.file ? { ...current, url, detail } : current))
+    } catch {
+      setPhotoNotice('This image could not be opened. Try a JPEG or PNG photo.')
+    }
+  }
+
+  function saveInstructions(text: string) {
+    onInstructionsChange(text.trim())
+    setInstructionsOpen(false)
   }
 
   /** Speech input: the transcript fills the box as it forms and is sent when the speaker pauses. */
@@ -202,6 +236,7 @@ export default function ChatView(props: ChatViewProps) {
   /** Streams a reply into the empty assistant message at the end of the list (at replyIndex). */
   async function streamInto(history: ChatMessage[], replyIndex: number) {
     let replyText = ''
+    let thoughtText = ''
     setGenerating(true)
     const controller = new AbortController()
     controllerRef.current = controller
@@ -216,14 +251,23 @@ export default function ChatView(props: ChatViewProps) {
       }
       const { tokensPerSecond } = await generateReply(
         history,
-        { reply: replySettings, context },
+        { reply: replySettings, context, instructions },
         (piece) => {
           replyText += piece
           updateLast((m) => ({ ...m, content: m.content + piece }))
         },
         controller.signal,
+        (piece) => {
+          thoughtText += piece
+          updateLast((m) => ({ ...m, thoughts: (m.thoughts ?? '') + piece }))
+        },
       )
-      updateLast((m) => ({ ...m, tokensPerSecond }))
+      if (!replyText.trim() && thoughtText) {
+        const content = 'The model used up its room while thinking and did not answer. Ask a shorter question, or turn off Think first.'
+        updateLast((m) => ({ ...m, content, error: true }))
+      } else {
+        updateLast((m) => ({ ...m, tokensPerSecond }))
+      }
       if (replySettings.readAloud === 'on' && replyText.trim()) readAloud(replyText, replyIndex)
     } catch (err) {
       if (isAbortError(err)) {
@@ -303,6 +347,7 @@ export default function ChatView(props: ChatViewProps) {
 
       <div className="messages" ref={listRef}>
         <div className="container messages-inner">
+          {banner}
           {messages.length === 0 ? (
             <div className="empty">
               <h2>{documents.length ? 'Ask about your document.' : 'Ask me anything.'}</h2>
@@ -324,11 +369,29 @@ export default function ChatView(props: ChatViewProps) {
               <div key={i} className={`msg ${m.role}${m.error ? ' error' : ''}`}>
                 <div className="bubble">
                   {m.image && <img className="msg-photo" src={m.image} alt="Photo sent with this message" />}
+                  {m.thoughts &&
+                    (!m.content && generating && i === messages.length - 1 ? (
+                      <div className="thoughts live">
+                        <span className="thinking">Thinking it through…</span>
+                        <p>{m.thoughts.length > 400 ? `…${m.thoughts.slice(-400)}` : m.thoughts}</p>
+                      </div>
+                    ) : (
+                      <details className="thoughts">
+                        <summary>Show thinking</summary>
+                        <p>{m.thoughts}</p>
+                      </details>
+                    ))}
                   {!m.content ? (
-                    <span className="thinking">
-                      {/* Encoding a photo takes far longer than reading text, so say so. */}
-                      {messages[i - 1]?.image ? 'Looking at the photo… this can take a few minutes on a phone.' : 'Thinking…'}
-                    </span>
+                    !m.thoughts && (
+                      <span className="thinking">
+                        {/* Encoding a photo takes far longer than reading text, so say so. */}
+                        {messages[i - 1]?.image
+                          ? messages[i - 1].detail
+                            ? 'Looking at the photo in detail… this can take several minutes on a phone.'
+                            : 'Looking at the photo… this can take a few minutes on a phone.'
+                          : 'Thinking…'}
+                      </span>
+                    )
                   ) : m.role === 'assistant' && !m.error ? (
                     <Markdown text={m.content} />
                   ) : (
@@ -397,11 +460,22 @@ export default function ChatView(props: ChatViewProps) {
           <div className="container doc-chips">
             {photo && (
               <span className="photo-chip">
-                <img src={photo} alt="Photo to send" />
+                <img src={photo.url} alt="Photo to send" />
                 <button type="button" aria-label="Remove photo" onClick={() => setPhoto(null)}>
                   ×
                 </button>
               </span>
+            )}
+            {photo && (
+              <button
+                type="button"
+                className="tool-chip"
+                aria-pressed={photo.detail}
+                title="Send in more detail: small text is easier to read, but the photo takes about five times longer"
+                onClick={togglePhotoDetail}
+              >
+                Detail
+              </button>
             )}
             {photoNotice && (
               <span className="doc-error">
@@ -430,6 +504,67 @@ export default function ChatView(props: ChatViewProps) {
             {attachStatus.error && <span className="doc-error">{attachStatus.error}</span>}
           </div>
         )}
+        {instructionsOpen && (
+          <div className="container instructions-panel">
+            <label htmlFor="chat-instructions">Instructions for this chat</label>
+            <textarea
+              id="chat-instructions"
+              value={instructionsDraft}
+              maxLength={500}
+              rows={3}
+              onChange={(e) => setInstructionsDraft(e.target.value)}
+              placeholder="For example: You are a maths teacher. Explain step by step."
+            />
+            <div className="instruction-presets">
+              {INSTRUCTION_PRESETS.map((preset) => (
+                <button type="button" key={preset} className="suggestion" onClick={() => setInstructionsDraft(preset)}>
+                  {preset}
+                </button>
+              ))}
+            </div>
+            <div className="instruction-actions">
+              <button type="button" className="btn primary" onClick={() => saveInstructions(instructionsDraft)}>
+                Save
+              </button>
+              <button type="button" className="btn ghost" onClick={() => setInstructionsOpen(false)}>
+                Cancel
+              </button>
+              {instructions && (
+                <button type="button" className="link" onClick={() => saveInstructions('')}>
+                  Remove instructions
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        <div className="container composer-tools">
+          <button
+            type="button"
+            className="tool-chip"
+            aria-pressed={Boolean(instructions)}
+            aria-expanded={instructionsOpen}
+            title={instructions ? `Instructions: ${instructions}` : 'Tell the AI how to answer in this chat'}
+            onClick={() => {
+              setInstructionsDraft(instructions)
+              setInstructionsOpen((open) => !open)
+            }}
+            disabled={generating}
+          >
+            {instructions ? 'Instructions on' : 'Instructions'}
+          </button>
+          {loaded.model.canThink && (
+            <button
+              type="button"
+              className="tool-chip"
+              aria-pressed={replySettings.think}
+              title="Think before answering: better at maths and logic, but slower"
+              onClick={() => onReplySettingsChange({ ...replySettings, think: !replySettings.think })}
+              disabled={generating}
+            >
+              Think first
+            </button>
+          )}
+        </div>
         <div className="container composer-inner">
           <button
             type="button"

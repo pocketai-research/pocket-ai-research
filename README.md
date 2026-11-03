@@ -14,7 +14,7 @@ An AI chat assistant that runs **entirely on your phone or computer**. Download 
 3. Tap **Install**, open **Pocket Ai Research**, choose a model and download it once (Wi-Fi recommended).
 4. From then on the chat works offline, even in airplane mode.
 
-To update, install the newer APK over the old one. Downloaded models are kept.
+To update, install the newer APK over the old one. Downloaded models are kept. The app checks GitHub for a new release twice a day when online and shows a **Download** link when there is one ([src/updates.ts](src/updates.ts)); the web version updates itself.
 
 Requirements: Android 7.0 or newer, at least 4 GB RAM, and 0.5 to 1.1 GB of free storage per model.
 
@@ -39,7 +39,9 @@ Requirements: Android 7.0 or newer, at least 4 GB RAM, and 0.5 to 1.1 GB of free
 
 Under **AI replies** you can choose the reply language (English, Indonesian, or the language of your message), the length and the style. Small models follow the language setting unreliably: Indonesian replies work best with the Balanced model. Each reply can be copied, shared, or regenerated.
 
-Models must stay well under 2 GB: in WebAssembly the weights need one allocation, and a 3B model (about 2 GB, e.g. Llama 3.2 3B) downloads but cannot load. The Smart model therefore is Qwen3 1.7B with its thinking mode turned off. It uses a 3,072-token context to save memory; older messages are dropped from what a model sees when a chat gets longer than its context.
+**Instructions** above the message box tell the AI how to answer in the current chat ("You are a patient maths teacher", "Answer briefly"); they are added to the system prompt and saved with the chat. With the Smart model, **Think first** lets Qwen3 reason before it answers: better at maths and logic, but much slower on a phone, and the thinking uses the same token budget as the answer. Its thoughts are shown apart from the answer under **Show thinking**.
+
+Models must stay well under 2 GB: in WebAssembly the weights need one allocation, and a 3B model (about 2 GB, e.g. Llama 3.2 3B) downloads but cannot load. The Smart model therefore is Qwen3 1.7B, with its thinking mode off unless you turn on Think first. It uses a 3,072-token context to save memory; older messages are dropped from what a model sees when a chat gets longer than its context.
 
 Models are downloaded from Hugging Face on first use and kept in the app's private storage (the browser's Origin Private File System).
 
@@ -49,9 +51,9 @@ The web version is an installable Progressive Web App. A service worker precache
 
 ## Read photos
 
-Tap the camera button in the chat box to take or choose a photo, then ask about it (or just send it: the default question is "Describe this photo."). Photos need the **Vision** model, InternVL3 1B, which wllama loads together with its image projector (mmproj); with another model open, the app offers to switch. Photos are scaled down to 448 px before they are sent ([src/photo.ts](src/photo.ts)): that is one tile for the image encoder, while llama.cpp cuts larger photos into several tiles and reading them takes about five times longer. Photos are saved with the chat, and only the most recent photo in a chat is shown to the model, so follow-up questions about it work while older photos do not use up memory.
+Tap the camera button in the chat box to take or choose a photo, then ask about it (or just send it: the default question is "Describe this photo."). Photos need the **Vision** model, InternVL3 1B, which wllama loads together with its image projector (mmproj); with another model open, the app offers to switch. Photos are scaled down to 448 px before they are sent ([src/photo.ts](src/photo.ts)): that is one tile for the image encoder, while llama.cpp cuts larger photos into several tiles and reading them takes about five times longer. For small text, tap **Detail** on the photo before sending: it goes at up to 896 px (four tiles and an overview). Photos are saved with the chat, and only the most recent photo in a chat is shown to the model, so follow-up questions about it work while older photos do not use up memory.
 
-Looking at a photo is slow on a CPU: about 2 minutes for the first answer on a 4-core laptop with 2 threads. Follow-up questions about the same photo are answered in seconds, because the photo stays in the model's memory. Small text in a photo is hard to read at 448 px; photograph documents up close.
+Looking at a photo is slow on a CPU: about 2 minutes for the first answer on a 4-core laptop with 2 threads. Follow-up questions about the same photo are answered in seconds, because the photo stays in the model's memory. Small text in a photo is hard to read at 448 px: photograph documents up close, or use Detail.
 
 ## Voice
 

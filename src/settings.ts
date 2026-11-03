@@ -49,10 +49,18 @@ export interface ReplySettings {
   creativity: 'precise' | 'balanced' | 'creative'
   /** Read each reply aloud with the device's voice when it is finished. */
   readAloud: 'off' | 'on'
+  /** Let models that can (Qwen3) think before answering: better at maths and logic, but slower. */
+  think: boolean
 }
 
 const REPLY_KEY = 'pocket-ai:replies'
-const DEFAULT_REPLY_SETTINGS: ReplySettings = { language: 'english', length: 'normal', creativity: 'balanced', readAloud: 'off' }
+const DEFAULT_REPLY_SETTINGS: ReplySettings = {
+  language: 'english',
+  length: 'normal',
+  creativity: 'balanced',
+  readAloud: 'off',
+  think: false,
+}
 
 export function readReplySettings(): ReplySettings {
   try {

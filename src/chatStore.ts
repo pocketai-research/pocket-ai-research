@@ -2,6 +2,8 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import type { ChatMessage } from './ai/engine'
 
 export interface ChatEntry extends ChatMessage {
+  /** What a thinking model worked through before its answer (Think first). */
+  thoughts?: string
   tokensPerSecond?: number
   error?: boolean
   /** Document passages the reply was based on, e.g. "report.pdf p. 3". */
@@ -15,6 +17,8 @@ export interface Conversation {
   messages: ChatEntry[]
   /** Documents attached to this chat (see src/docs/store.ts). */
   documentIds?: string[]
+  /** The user's instructions for this chat, e.g. "You are a maths teacher". */
+  instructions?: string
   createdAt: number
   updatedAt: number
 }

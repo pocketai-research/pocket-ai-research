@@ -1342,3 +1342,123 @@ h2 {
     gap: 6px;
   }
 }
+
+/* Chat tools: instructions, Think first, photo detail */
+
+.composer-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.tool-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tool-chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tool-chip:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.photo-chip + .tool-chip {
+  align-self: center;
+}
+
+.instructions-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.instructions-panel label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.instructions-panel textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+
+.instruction-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.instruction-presets .suggestion {
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+.instruction-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.thoughts {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--border);
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.thoughts p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+
+.thoughts summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.thoughts.live p {
+  max-height: 9em;
+  overflow: hidden;
+}
+
+/* New version of the Android app */
+
+.update-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--accent-soft);
+}
+
+.update-banner span {
+  flex: 1 1 200px;
+}

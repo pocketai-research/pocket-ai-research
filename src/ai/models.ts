@@ -7,8 +7,8 @@ export interface ModelOption {
   url: string
   /** Context window in tokens; smaller for big models to save memory. Default 4096. */
   contextSize?: number
-  /** false turns off a model's thinking mode (Qwen3), which is slow on phones. */
-  thinking?: boolean
+  /** The model can think before answering (Qwen3). Off unless the user turns on Think first: slow on phones. */
+  canThink?: boolean
   /** Vision models: the projector that turns images into tokens the model understands. */
   mmprojUrl?: string
   /** Shown on the model card when the licence asks for it. */
@@ -43,7 +43,7 @@ export const MODELS: ModelOption[] = [
     url: 'https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf',
     // Qwen3 keeps 8 key/value heads, so its context costs about 4x more memory than Qwen2.5's.
     contextSize: 3072,
-    thinking: false,
+    canThink: true,
   },
   {
     id: 'internvl3-1b',

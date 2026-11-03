@@ -17,6 +17,8 @@ export interface ChatMessage {
   content: string
   /** A photo sent with a user message, as a JPEG data URL. */
   image?: string
+  /** The photo was sent in detail (several tiles, see src/photo.ts). */
+  detail?: boolean
 }
 
 export interface LoadedModel {
@@ -116,7 +118,8 @@ async function doLoadModel(
     // Parse the model's chat template with Jinja, as llama-server does; Qwen3's switch for its
     // thinking mode only works through it.
     jinja: true,
-    ...(model.thinking === false ? { reasoning: false } : {}),
+    // Thoughts arrive apart from the answer (reasoning_content); each request says whether to think.
+    ...(model.canThink ? { reasoning_format: 'deepseek' as const } : {}),
     // n_gpu_layers: 0 makes wllama skip WebGPU device setup entirely.
     ...(settings.gpu ? {} : { n_gpu_layers: 0 }),
     ...(settings.singleThread ? { n_threads: 1 } : {}),
@@ -169,9 +172,11 @@ export interface ReplyOptions {
   reply: ReplySettings
   /** Facts the reply must be based on (map places, document passages), added to the system prompt. */
   context?: string
+  /** The user's instructions for this chat, e.g. "You are a maths teacher". */
+  instructions?: string
 }
 
-function systemPrompt({ reply, context }: ReplyOptions) {
+function systemPrompt({ reply, context, instructions }: ReplyOptions) {
   // For Indonesian the whole prompt is Indonesian; an English prompt pulls small models to English.
   const base =
     reply.language === 'indonesian'
@@ -185,19 +190,24 @@ function systemPrompt({ reply, context }: ReplyOptions) {
           LANGUAGE_RULES[reply.language],
           LENGTHS[reply.length].rule,
         ].join(' ')
-  return context ? `${base}\n\n${context}` : base
+  const own = instructions?.trim()
+  const label = reply.language === 'indonesian' ? 'Instruksi dari pengguna untuk chat ini' : "The user's instructions for this chat"
+  const rules = own ? `${base}\n\n${label}: ${own}` : base
+  return context ? `${rules}\n\n${context}` : rules
 }
 
+/** Streams a reply; with Think first on a model that can think, its thoughts go to onThought first. */
 export async function generateReply(
   history: ChatMessage[],
   options: ReplyOptions,
   onText: (piece: string) => void,
   signal: AbortSignal,
+  onThought?: (piece: string) => void,
 ): Promise<{ tokensPerSecond?: number }> {
   if (!wllama || !loaded) throw new Error('No model is loaded.')
   markBusy({ modelId: loaded.model.id, phase: 'replying', settings: loaded.settings })
   try {
-    return await streamReply(wllama, loaded.model.contextSize ?? CONTEXT_SIZE, history, options, onText, signal)
+    return await streamReply(wllama, loaded, history, options, onText, signal, onThought)
   } finally {
     clearBusy()
   }
@@ -205,9 +215,11 @@ export async function generateReply(
 
 // Rough token count (about 3 characters per token, on the safe side for Indonesian text).
 const estimateTokens = (text: string) => Math.ceil(text.length / 3) + 4
-// A photo becomes a few hundred tokens once the projector has encoded it.
+// A photo becomes 256 tokens per 448 px tile once the projector has encoded it (see src/photo.ts).
 const IMAGE_TOKENS = 300
-const messageTokens = (m: ChatMessage, withImage: boolean) => estimateTokens(m.content) + (withImage ? IMAGE_TOKENS : 0)
+const DETAIL_IMAGE_TOKENS = 5 * 256 + 50
+const messageTokens = (m: ChatMessage, withImage: boolean) =>
+  estimateTokens(m.content) + (withImage ? (m.detail ? DETAIL_IMAGE_TOKENS : IMAGE_TOKENS) : 0)
 
 /**
  * Drops the oldest messages until the prompt and the reply fit in the context window. Only the
@@ -216,7 +228,7 @@ const messageTokens = (m: ChatMessage, withImage: boolean) => estimateTokens(m.c
 function fitHistory(history: ChatMessage[], budget: number) {
   const lastImage = history.findLastIndex((m) => m.image)
   const kept = history
-    .map((m, i) => (m.image && i !== lastImage ? { ...m, image: undefined, content: `[photo] ${m.content}` } : m))
+    .map((m, i) => (m.image && i !== lastImage ? { ...m, image: undefined, detail: undefined, content: `[photo] ${m.content}` } : m))
     .slice(-MAX_HISTORY)
   let used = kept.reduce((sum, m) => sum + messageTokens(m, Boolean(m.image)), 0)
   while (kept.length > 1 && used > budget) {
@@ -237,15 +249,21 @@ async function toCompletionMessage(m: ChatMessage, vision: boolean): Promise<Cha
 
 async function streamReply(
   instance: Wllama,
-  contextSize: number,
+  model: LoadedModel,
   history: ChatMessage[],
   options: ReplyOptions,
   onText: (piece: string) => void,
   signal: AbortSignal,
+  onThought?: (piece: string) => void,
 ): Promise<{ tokensPerSecond?: number }> {
+  const contextSize = model.model.contextSize ?? CONTEXT_SIZE
+  const think = Boolean(model.model.canThink && options.reply.think)
   const system = systemPrompt(options)
-  // A small context leaves at most half of it for the reply.
-  const maxTokens = Math.min(LENGTHS[options.reply.length].maxTokens, Math.floor(contextSize / 2))
+  // A small context leaves at most half of it for the reply. Thinking takes the whole half:
+  // the thoughts come out of the same budget as the answer.
+  const maxTokens = think
+    ? Math.floor(contextSize / 2)
+    : Math.min(LENGTHS[options.reply.length].maxTokens, Math.floor(contextSize / 2))
   const recent = fitHistory(history, contextSize - maxTokens - estimateTokens(system) - 64)
   // Small models follow the language of the last message over the system prompt, so a fixed
   // reply language is repeated there too (sent to the model only, never shown).
@@ -253,7 +271,7 @@ async function streamReply(
   if (last?.role === 'user' && options.reply.language !== 'auto') {
     recent[recent.length - 1] = { ...last, content: `${last.content}\n\n(${LANGUAGE_RULES[options.reply.language]})` }
   }
-  const vision = loaded?.vision ?? false
+  const vision = model.vision
   const messages: ChatCompletionMessage[] = [
     { role: 'system', content: system },
     ...(await Promise.all(recent.map((m) => toCompletionMessage(m, vision)))),
@@ -265,13 +283,16 @@ async function streamReply(
     temperature: TEMPERATURES[options.reply.creativity],
     top_p: 0.9,
     penalty_repeat: 1.1,
+    ...(model.model.canThink ? { chat_template_kwargs: { enable_thinking: think } } : {}),
     abortSignal: signal,
   })
 
   let tokensPerSecond: number | undefined
   for await (const chunk of stream) {
-    const piece = chunk.choices[0]?.delta.content
-    if (piece) onText(piece)
+    // llama-server sends a thinking model's thoughts as reasoning_content, apart from the answer.
+    const delta = chunk.choices[0]?.delta as { content?: string | null; reasoning_content?: string | null } | undefined
+    if (delta?.reasoning_content) onThought?.(delta.reasoning_content)
+    if (delta?.content) onText(delta.content)
     if (chunk.timings) tokensPerSecond = chunk.timings.predicted_per_second
   }
   return { tokensPerSecond }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { ModelOption } from './ai/models'
 import Brand, { REPO_URL } from './Brand'
 import { useInstallPrompt } from './pwa'
@@ -15,6 +15,8 @@ export interface LoadingState {
 
 interface SetupViewProps {
   models: ModelOption[]
+  /** Shown at the top, e.g. that a new version of the app is available. */
+  banner?: ReactNode
   downloaded: Set<string> | null
   loading: LoadingState | null
   activeId: string | undefined
@@ -70,7 +72,7 @@ function LoadingProgress({ progress, cached }: { progress: number; cached: boole
 
 export default function SetupView(props: SetupViewProps) {
   const { models, downloaded, loading, activeId, error, notice, settings, onSettingsChange, onOpen, onDelete } = props
-  const { onBackToChat, onShowMap, replySettings, onReplySettingsChange, documents, onDeleteDocument } = props
+  const { onBackToChat, onShowMap, replySettings, onReplySettingsChange, documents, onDeleteDocument, banner } = props
   const [gpuAvailable, setGpuAvailable] = useState(false)
   const install = useInstallPrompt()
 
@@ -88,7 +90,7 @@ export default function SetupView(props: SetupViewProps) {
               Back to chat
             </button>
           ) : (
-            <span className="badge">Preview v0.12</span>
+            <span className="badge">Preview v{__APP_VERSION__.split('.').slice(0, 2).join('.')}</span>
           )}
         </div>
       </header>
@@ -107,6 +109,8 @@ export default function SetupView(props: SetupViewProps) {
             </button>
           )}
         </section>
+
+        {banner}
 
         {notice && (
           <p className="alert warn" role="alert">

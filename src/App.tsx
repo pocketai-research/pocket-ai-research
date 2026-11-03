@@ -23,6 +23,7 @@ import {
 } from './settings'
 import SetupView, { type LoadingState } from './SetupView'
 import { extractChunks } from './docs/extract'
+import { checkForUpdate, dismissUpdate, type AppUpdate } from './updates'
 import { deleteDocument, getDocuments, listDocuments, saveDocument, summarize, type DocSummary } from './docs/store'
 
 // MapLibre is large, so the map only loads when it is opened.
@@ -76,6 +77,12 @@ export default function App() {
   const [chatDocs, setChatDocs] = useState<DocSummary[]>([])
   const [allDocs, setAllDocs] = useState<DocSummary[]>([])
   const [attachStatus, setAttachStatus] = useState<{ reading?: string; error?: string }>({})
+  const [instructions, setInstructions] = useState('')
+  const [update, setUpdate] = useState<AppUpdate | null>(null)
+
+  useEffect(() => {
+    checkForUpdate().then(setUpdate)
+  }, [])
 
   const refreshDocuments = () => listDocuments().then(setAllDocs)
   useEffect(() => {
@@ -131,11 +138,12 @@ export default function App() {
     })
   }, [])
 
-  const snapshotOf = (entries: ChatEntry[], docs: DocSummary[]) => JSON.stringify([entries, docs.map((d) => d.id)])
+  const snapshotOf = (entries: ChatEntry[], docs: DocSummary[], text: string) =>
+    JSON.stringify([entries, docs.map((d) => d.id), text])
 
-  function persist(meta: ChatMeta, entries: ChatEntry[], docs: DocSummary[]) {
+  function persist(meta: ChatMeta, entries: ChatEntry[], docs: DocSummary[], text: string) {
     const saved = entries.filter((m) => m.content)
-    const snapshot = snapshotOf(saved, docs)
+    const snapshot = snapshotOf(saved, docs, text)
     if (!saved.length || snapshot === savedSnapshot.current) return
     savedSnapshot.current = snapshot
     saveConversation({
@@ -144,24 +152,26 @@ export default function App() {
       modelId: active?.model.id ?? '',
       messages: saved,
       documentIds: docs.map((d) => d.id),
+      ...(text ? { instructions: text } : {}),
       updatedAt: Date.now(),
     })
   }
 
   // Debounced so a streaming reply is not written to storage on every token.
   useEffect(() => {
-    const timer = setTimeout(() => persist(chatMeta, messages, chatDocs), 500)
+    const timer = setTimeout(() => persist(chatMeta, messages, chatDocs, instructions), 500)
     return () => clearTimeout(timer)
   })
 
   function showConversation(conversation: Conversation) {
     setChatMeta({ id: conversation.id, createdAt: conversation.createdAt })
     setMessages(conversation.messages)
+    setInstructions(conversation.instructions ?? '')
     setAttachStatus({})
     getDocuments(conversation.documentIds ?? []).then((docs) => {
       const summaries = docs.map(summarize)
       setChatDocs(summaries)
-      savedSnapshot.current = snapshotOf(conversation.messages, summaries)
+      savedSnapshot.current = snapshotOf(conversation.messages, summaries, conversation.instructions ?? '')
     })
   }
 
@@ -169,8 +179,9 @@ export default function App() {
     setChatMeta(newChatMeta())
     setMessages([])
     setChatDocs([])
+    setInstructions('')
     setAttachStatus({})
-    savedSnapshot.current = snapshotOf([], [])
+    savedSnapshot.current = snapshotOf([], [], '')
   }
 
   async function attachDocument(file: File) {
@@ -205,12 +216,12 @@ export default function App() {
 
   // Switching chats flushes the current one first, since its debounced save may still be pending.
   function startNewChat() {
-    persist(chatMeta, messages, chatDocs)
+    persist(chatMeta, messages, chatDocs, instructions)
     resetChat()
   }
 
   function openConversation(conversation: Conversation) {
-    persist(chatMeta, messages, chatDocs)
+    persist(chatMeta, messages, chatDocs, instructions)
     showConversation(conversation)
   }
 
@@ -231,6 +242,25 @@ export default function App() {
     setView('map')
   }
 
+  // The Android app does not update itself, so it says when a new release is out (src/updates.ts).
+  const banner = update && (
+    <div className="update-banner" role="status">
+      <span>Version {update.version} of the app is available.</span>
+      <a className="btn primary" href={update.url} target="_blank" rel="noreferrer">
+        Download
+      </a>
+      <button
+        className="link"
+        onClick={() => {
+          dismissUpdate(update)
+          setUpdate(null)
+        }}
+      >
+        Later
+      </button>
+    </div>
+  )
+
   if (view === 'map') {
     return (
       <Suspense fallback={<p className="container section-intro">Loading map…</p>}>
@@ -244,6 +274,10 @@ export default function App() {
       <ChatView
         loaded={active}
         replySettings={replySettings}
+        onReplySettingsChange={changeReplySettings}
+        instructions={instructions}
+        onInstructionsChange={setInstructions}
+        banner={banner}
         chatId={chatMeta.id}
         messages={messages}
         setMessages={setMessages}
@@ -268,6 +302,7 @@ export default function App() {
   return (
     <SetupView
       models={MODELS}
+      banner={banner}
       downloaded={downloaded}
       loading={loading}
       activeId={active?.model.id}

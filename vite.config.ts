@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -10,7 +11,11 @@ const crossOriginIsolation = {
   'Cross-Origin-Embedder-Policy': 'require-corp',
 }
 
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+
 export default defineConfig({
+  // The app's version, for the start page badge and the update check (src/updates.ts).
+  define: { __APP_VERSION__: JSON.stringify(version) },
   // Relative base so the same build works on github.io/<repo>/ and on a custom domain.
   base: './',
   plugins: [

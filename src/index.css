@@ -757,7 +757,8 @@ h2 {
 
 .map-overlay {
   position: absolute;
-  bottom: calc(40px + env(safe-area-inset-bottom));
+  z-index: 3;
+  top: 12px;
   left: 50%;
   max-width: calc(100% - 32px);
   margin: 0;
@@ -771,9 +772,182 @@ h2 {
   text-align: center;
 }
 
-.map-area .maplibregl-ctrl-bottom-left,
-.map-area .maplibregl-ctrl-bottom-right {
-  margin-bottom: env(safe-area-inset-bottom);
+/* Region panel: a bottom sheet over the map */
+.region-panel {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 55%;
+  padding-bottom: env(safe-area-inset-bottom);
+  border-top: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  background: var(--surface);
+  box-shadow: 0 -4px 20px rgb(0 0 0 / 0.15);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px 6px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.tabs button {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tabs button[aria-selected='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 4px 16px 16px;
+  overflow-y: auto;
+}
+
+.panel-body .btn {
+  align-self: flex-start;
+}
+
+.panel-search {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.region-list,
+.area-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.region-list button {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 10px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.region-list small,
+.area-info small {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.breadcrumb {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.download-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.muted {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.muted.small {
+  font-size: 13px;
+}
+
+.download-card .ready {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ok);
+}
+
+.list-title {
+  margin: 6px 0 0;
+  font-size: 15px;
+}
+
+.area-list {
+  gap: 8px;
+}
+
+.area-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.area-list li.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.area-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.region-panel > .progress {
+  padding: 0 16px 8px;
+}
+
+.region-panel > .alert {
+  margin: 0 16px 8px;
 }
 
 @media (max-width: 560px) {

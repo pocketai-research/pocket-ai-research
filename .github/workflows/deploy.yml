@@ -24,10 +24,6 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Download offline map packs
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: npm run maps:download
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4

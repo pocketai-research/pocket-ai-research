@@ -5,104 +5,133 @@ import {
   Map as MapLibreMap,
   NavigationControl,
   ScaleControl,
-  addProtocol,
   setWorkerUrl,
+  type GeoJSONSource,
 } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
-import { layers, namedFlavor } from '@protomaps/basemaps'
-import { FileSource, PMTiles, Protocol } from 'pmtiles'
 import { ArrowLeftIcon } from '../icons'
-import { REGIONS, type MapRegion } from './regions'
+import { STYLE_URL } from './download'
+import type { BBox } from './geo'
+import { offlineStyle } from './offlineMap'
+import { listAreas, type OfflineArea } from './offlineStore'
+import RegionPanel from './RegionPanel'
 
 // MapLibre 6 looks for its worker next to its own module, which bundling breaks.
 setWorkerUrl(workerUrl)
 
-const protocol = new Protocol()
-addProtocol('pmtiles', protocol.tile)
+type Mode = { kind: 'online' } | { kind: 'offline'; area: OfflineArea }
 
-const ATTRIBUTION =
-  '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a> · <a href="https://protomaps.com" target="_blank" rel="noreferrer">Protomaps</a>'
+const pad = ([w, s, e, n]: BBox, d: number): BBox => [w - d, s - d, e + d, n + d]
 
-const assetUrl = (path: string) => new URL(path, document.baseURI).href
+function useOnline() {
+  const [online, setOnline] = useState(navigator.onLine)
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine)
+    window.addEventListener('online', update)
+    window.addEventListener('offline', update)
+    return () => {
+      window.removeEventListener('online', update)
+      window.removeEventListener('offline', update)
+    }
+  }, [])
+  return online
+}
 
-const archives = new Map<string, Promise<void>>()
-
-/**
- * Reads the whole map pack into memory and serves tiles from it. The Android app's local
- * server ignores Range requests (it always sends the file from the start), so streaming the
- * archive with HTTP ranges would return the wrong bytes there.
- */
-function loadArchive(region: MapRegion): Promise<void> {
-  let promise = archives.get(region.id)
-  if (!promise) {
-    promise = fetch(assetUrl(`maps/${region.id}.pmtiles`)).then(async (res) => {
-      if (!res.ok) throw new Error(`The ${region.name} map data is missing from this build.`)
-      const file = new File([await res.blob()], `${region.id}.pmtiles`)
-      protocol.add(new PMTiles(new FileSource(file)))
-    })
-    promise.catch(() => archives.delete(region.id))
-    archives.set(region.id, promise)
+/** Dashed outline of the selected region's box, which is also what a download covers. */
+function showOutline(map: MapLibreMap, bbox: BBox) {
+  const [w, s, e, n] = bbox
+  const data = {
+    type: 'Feature' as const,
+    properties: {},
+    geometry: { type: 'Polygon' as const, coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] },
   }
-  return promise
+  const source = map.getSource('selection') as GeoJSONSource | undefined
+  if (source) return source.setData(data)
+  map.addSource('selection', { type: 'geojson', data })
+  map.addLayer({
+    id: 'selection-outline',
+    type: 'line',
+    source: 'selection',
+    paint: { 'line-color': '#0f766e', 'line-width': 2, 'line-dasharray': [2, 2] },
+  })
 }
 
 export default function MapView({ onBack }: { onBack: () => void }) {
-  const region = REGIONS[0]
   const containerRef = useRef<HTMLDivElement>(null)
-  const [ready, setReady] = useState(false)
+  const mapRef = useRef<MapLibreMap | null>(null)
+  const online = useOnline()
+  const [areas, setAreas] = useState<OfflineArea[]>([])
+  const [mode, setMode] = useState<Mode | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
+  const refreshAreas = () => listAreas().then(setAreas)
+
+  // Start online, or on the newest offline area when there is no connection.
   useEffect(() => {
+    listAreas().then((list) => {
+      setAreas(list)
+      setMode(!navigator.onLine && list.length ? { kind: 'offline', area: list[0] } : { kind: 'online' })
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!mode) return
     let map: MapLibreMap | undefined
     let cancelled = false
-    const flavor = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    const [west, south, east, north] = region.bbox
+    setMessage(null)
 
-    loadArchive(region)
-      .then(() => {
-        if (cancelled || !containerRef.current) return
-        map = new MapLibreMap({
-          container: containerRef.current,
-          style: {
-            version: 8,
-            glyphs: `${assetUrl('map-assets/fonts/')}{fontstack}/{range}.pbf`,
-            sprite: assetUrl(`map-assets/sprites/${flavor}`),
-            sources: {
-              protomaps: { type: 'vector', url: `pmtiles://${region.id}.pmtiles`, attribution: ATTRIBUTION },
-            },
-            layers: layers('protomaps', namedFlavor(flavor), { lang: 'en' }),
-          },
-          bounds: [west, south, east, north],
-          maxBounds: [west - 0.05, south - 0.05, east + 0.05, north + 0.05],
-          minZoom: 10,
-          maxZoom: 19,
-          attributionControl: false,
-        })
-        map.addControl(new AttributionControl({ compact: true }))
-        map.addControl(new NavigationControl(), 'top-right')
-        map.addControl(new ScaleControl(), 'bottom-left')
+    const create = async () => {
+      const style = mode.kind === 'online' ? STYLE_URL : await offlineStyle(mode.area)
+      if (cancelled || !containerRef.current) return
+      map = new MapLibreMap({
+        container: containerRef.current,
+        style,
+        maxZoom: 19,
+        attributionControl: false,
+        ...(mode.kind === 'offline'
+          ? { bounds: mode.area.bbox, maxBounds: pad(mode.area.bbox, 0.2) }
+          : { center: [110, 0], zoom: 1.5 }),
+      })
+      mapRef.current = map
+      // Top-left, because the region panel covers the bottom of the map. Attribution is required.
+      map.addControl(new AttributionControl({ compact: true }), 'top-left')
+      map.addControl(new ScaleControl(), 'top-left')
+      map.addControl(new NavigationControl(), 'top-right')
 
-        const geolocate = new GeolocateControl({
-          positionOptions: { enableHighAccuracy: true },
-          trackUserLocation: true,
-        })
-        geolocate.on('geolocate', () => setMessage(null))
-        // Fired instead of 'geolocate' when the position is outside the map's maxBounds.
-        geolocate.on('outofmaxbounds', () => setMessage(`You are outside the ${region.name} map area.`))
-        geolocate.on('error', () => setMessage('Location is unavailable. Allow location access and turn on GPS.'))
-        map.addControl(geolocate, 'top-right')
-        map.once('load', () => setReady(true))
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setMessage(err.message)
-      })
+      const geolocate = new GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true })
+      geolocate.on('geolocate', () => setMessage(null))
+      // Fired instead of 'geolocate' when the position is outside the offline area's bounds.
+      geolocate.on('outofmaxbounds', () =>
+        setMessage(mode.kind === 'offline' ? `You are outside the ${mode.area.name} offline map.` : null),
+      )
+      geolocate.on('error', () => setMessage('Location is unavailable. Allow location access and turn on GPS.'))
+      map.addControl(geolocate, 'top-right')
+    }
+    create().catch((err: Error) => !cancelled && setMessage(err.message))
 
     return () => {
       cancelled = true
       map?.remove()
+      mapRef.current = null
     }
-  }, [region])
+  }, [mode])
+
+  function select(bbox: BBox) {
+    const map = mapRef.current
+    if (!map || mode?.kind !== 'online') return
+    const panel = document.querySelector('.region-panel')?.getBoundingClientRect().height ?? 0
+    map.fitBounds(bbox, { padding: { top: 40, left: 40, right: 60, bottom: panel + 20 }, maxZoom: 14 })
+    if (map.isStyleLoaded()) showOutline(map, bbox)
+    else map.once('load', () => showOutline(map, bbox))
+  }
+
+  function visibleBBox(): BBox | null {
+    const bounds = mapRef.current?.getBounds()
+    return bounds ? [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()] : null
+  }
+
+  const status = mode?.kind === 'offline' ? `Offline · ${mode.area.name}` : online ? 'Online map' : 'No connection'
 
   return (
     <div className="map-layout">
@@ -113,21 +142,30 @@ export default function MapView({ onBack }: { onBack: () => void }) {
               <ArrowLeftIcon />
             </button>
             <div className="map-title">
-              <strong>Offline map</strong>
-              <span>{region.name}</span>
+              <strong>Map</strong>
+              <span>{status}</span>
             </div>
           </div>
-          <span className="badge">Works offline</span>
+          <span className="badge">{mode?.kind === 'offline' ? 'Offline' : 'Online'}</span>
         </div>
       </header>
       <div className="map-area">
         <div ref={containerRef} className="map-canvas" />
-        {!ready && !message && <p className="map-overlay">Loading map…</p>}
-        {message && (
+        {(message || (mode?.kind === 'online' && !online)) && (
           <p className="map-overlay" role="status">
-            {message}
+            {message ?? 'You are offline. Open one of your offline areas below.'}
           </p>
         )}
+        <RegionPanel
+          areas={areas}
+          viewingAreaId={mode?.kind === 'offline' ? mode.area.id : null}
+          online={online}
+          onSelect={select}
+          onViewOffline={(area) => setMode({ kind: 'offline', area })}
+          onViewOnline={() => setMode({ kind: 'online' })}
+          onAreasChange={refreshAreas}
+          visibleBBox={visibleBBox}
+        />
       </div>
     </div>
   )

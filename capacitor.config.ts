@@ -4,6 +4,9 @@ const config: CapacitorConfig = {
   appId: 'com.pocketairesearch.app',
   appName: 'Pocket Ai Research',
   webDir: 'dist',
+  // Identifies the app to the services it calls. OpenFreeMap requires this for offline
+  // downloads; src/map/download.ts checks for it.
+  appendUserAgent: 'PocketAiResearch (+https://github.com/minusonedoge-cloud/pocket-ai-research)',
 }
 
 export default config

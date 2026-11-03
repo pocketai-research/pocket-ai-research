@@ -37,21 +37,15 @@ Requirements: Android 7.0 or newer, at least 4 GB RAM, and 0.5 to 1.1 GB of free
 
 Models are downloaded from Hugging Face on first use and kept in the app's private storage (the browser's Origin Private File System).
 
-## Offline map
+## Map
 
-The app includes an offline map of **Yogyakarta** with your GPS position. It needs no internet and no AI model: the map pack ships inside the APK.
+An online world map with GPS, where you can pick a country and then drill down through its own administrative levels (in Indonesia: province → regency / city → district (kecamatan) → village). Any selected region can be downloaded for offline use in the Android app.
 
-- Map data comes from [OpenStreetMap](https://www.openstreetmap.org/copyright) (© OpenStreetMap contributors, ODbL), cut from the [Protomaps](https://protomaps.com) daily planet build into a [PMTiles](https://docs.protomaps.com/pmtiles/) file (about 22 MB).
-- [MapLibre GL JS](https://maplibre.org) draws the map. Fonts (Noto Sans, SIL Open Font License) and icons (MIT) are bundled in [public/map-assets](public/map-assets).
-- The app reads the whole map pack into memory instead of using HTTP range requests, because the Android app's local server does not honour ranges.
+- **Online map:** [OpenFreeMap](https://openfreemap.org) vector tiles (OpenMapTiles schema, "Liberty" style), drawn with [MapLibre GL JS](https://maplibre.org). Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL).
+- **Region lists:** countries are bundled ([src/map/countries.json](src/map/countries.json), generated once from OpenStreetMap). Levels below a country come from the [Overpass API](https://overpass-api.de) (with a mirror as fallback) and are cached on the device, so each list is slow only the first time. Level names per country are in [src/map/admin.ts](src/map/admin.ts).
+- **Offline areas:** tiles for the region's box, plus the style, sprite and Latin glyphs, are stored in IndexedDB and served to MapLibre through an `offline://` protocol ([src/map/offlineMap.ts](src/map/offlineMap.ts)).
 
-Add or change a region:
-
-1. Edit [src/map/regions.json](src/map/regions.json) (`bbox` is west, south, east, north).
-2. Run the **Map data** workflow on GitHub (Actions → Map data → Run workflow). It cuts each region and uploads it to the `map-data` release.
-3. Push to `main` or tag a release: the builds download the map packs from that release.
-
-For local development, run `npm run maps:download` once (needs the GitHub CLI) to put the packs in `public/maps/`.
+Downloads follow [OpenFreeMap's terms](https://openfreemap.org/tos/) for in-app offline downloads: at most 3,000 tiles or 50 MB per download, at most 4 parallel requests, and a User-Agent that identifies the app. The detail level therefore depends on the area's size: a district or regency gets street-level detail, a large province or a country gets a coarser map. The Android app adds the identifying User-Agent ([capacitor.config.ts](capacitor.config.ts)); browsers cannot, so the web version offers the online map only.
 
 ## How it works
 
@@ -68,7 +62,6 @@ Requirements: Node.js 24 or newer.
 
 ```bash
 npm install            # install dependencies
-npm run maps:download  # fetch the offline map packs into public/maps/
 npm run dev      # start the dev server at http://localhost:5173
 npm run build    # type-check and build to dist/
 npm run preview  # serve the production build locally
@@ -88,7 +81,6 @@ npx cap open android   # open the project in Android Studio
 | [deploy.yml](.github/workflows/deploy.yml) | Push to `main` | Web version published to GitHub Pages |
 | [android.yml](.github/workflows/android.yml) | Push a tag such as `v0.2.0` | Signed APK attached to a new GitHub Release |
 | [android.yml](.github/workflows/android.yml) | Run manually | APK uploaded as a workflow artifact |
-| [map-data.yml](.github/workflows/map-data.yml) | Run manually | Offline map packs uploaded to the `map-data` release |
 
 Publish a new Android version:
 
@@ -114,7 +106,7 @@ Keep the keystore and its password backed up outside the repository. Never commi
 - [x] **Phase 1**: project setup and automatic deployment
 - [x] **Phase 2**: on-device AI chat with a model picker, Android app
 - [x] **Phase 3a**: saved conversations and Markdown-formatted replies
-- [x] **AI Map 1**: offline map of Yogyakarta with GPS position
+- [x] **AI Map 1**: online world map with country → province → regency → district selection, GPS, and offline downloads
 - [ ] **AI Map 2**: search places offline and ask the AI about them ("nearest hospital?")
 - [ ] **AI Map 3**: offline directions drawn on the map and explained by the AI
 - [ ] **Phase 3b**: installable offline web app (PWA) and multi-threading on GitHub Pages

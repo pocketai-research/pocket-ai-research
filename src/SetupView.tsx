@@ -3,7 +3,6 @@ import type { ModelOption } from './ai/models'
 import Brand, { REPO_URL } from './Brand'
 import { hasWebGPU } from './deviceCheck'
 import DeviceChecks from './DeviceChecks'
-import { REGIONS } from './map/regions'
 import type { EngineSettings } from './settings'
 
 export interface LoadingState {
@@ -61,7 +60,7 @@ export default function SetupView(props: SetupViewProps) {
               Back to chat
             </button>
           ) : (
-            <span className="badge">Preview v0.3</span>
+            <span className="badge">Preview v0.4</span>
           )}
         </div>
       </header>
@@ -125,10 +124,10 @@ export default function SetupView(props: SetupViewProps) {
         </section>
 
         <section className="section">
-          <h2>Offline map</h2>
+          <h2>Map</h2>
           <p className="section-intro">
-            Browse {REGIONS.map((r) => r.name).join(', ')} without internet and see where you are with GPS. No AI
-            model needed.
+            Browse any country by province, regency and district, and see where you are with GPS. In the Android app you
+            can download areas to use the map without internet. No AI model needed.
           </p>
           <button className="btn primary" onClick={onShowMap}>
             Open map

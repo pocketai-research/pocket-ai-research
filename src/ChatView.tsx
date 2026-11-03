@@ -7,9 +7,23 @@ import type { ChatEntry, Conversation } from './chatStore'
 import { ACCEPTED_FILES } from './docs/extract'
 import { retrieve } from './docs/retrieve'
 import { getDocuments, type DocSummary } from './docs/store'
-import { CopyIcon, FileIcon, MapIcon, MenuIcon, PaperclipIcon, PlusIcon, RefreshIcon, ShareIcon, SlidersIcon } from './icons'
+import {
+  CopyIcon,
+  FileIcon,
+  MapIcon,
+  MenuIcon,
+  MicIcon,
+  PaperclipIcon,
+  PlusIcon,
+  RefreshIcon,
+  ShareIcon,
+  SlidersIcon,
+  SpeakerIcon,
+  StopIcon,
+} from './icons'
 import Markdown from './Markdown'
 import type { ReplySettings } from './settings'
+import { canListen, listen, speak, speechLanguage, stopListening, stopSpeaking } from './voice'
 
 interface ChatViewProps {
   loaded: LoadedModel
@@ -65,8 +79,17 @@ export default function ChatView(props: ChatViewProps) {
   const [generating, setGenerating] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+  const [micAvailable, setMicAvailable] = useState(false)
+  const [listening, setListening] = useState(false)
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null)
+  const [voiceError, setVoiceError] = useState<string | null>(null)
   const controllerRef = useRef<AbortController | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    canListen().then(setMicAvailable)
+    return () => stopSpeaking()
+  }, [])
 
   useEffect(() => {
     const list = listRef.current
@@ -79,9 +102,47 @@ export default function ChatView(props: ChatViewProps) {
   function send(text: string) {
     const content = text.trim()
     if (!content || generating) return
+    stopSpeaking()
     setMessages((prev) => [...prev, { role: 'user', content }, { role: 'assistant', content: '' }])
     setInput('')
-    streamInto([...toHistory(messages), { role: 'user', content }])
+    streamInto([...toHistory(messages), { role: 'user', content }], messages.length + 1)
+  }
+
+  /** Speech input: the transcript fills the box as it forms and is sent when the speaker pauses. */
+  async function toggleListening() {
+    if (listening) return stopListening()
+    stopSpeaking()
+    setVoiceError(null)
+    setListening(true)
+    try {
+      const text = await listen(speechLanguage(replySettings.language), setInput)
+      if (text.trim()) send(text)
+      else setInput('')
+    } catch (err) {
+      setVoiceError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setListening(false)
+    }
+  }
+
+  async function readAloud(text: string, index: number) {
+    setSpeakingIndex(index)
+    try {
+      await speak(text, replySettings.language)
+    } catch (err) {
+      setVoiceError(`Could not read the reply aloud: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setSpeakingIndex((current) => (current === index ? null : current))
+    }
+  }
+
+  function toggleReadAloud(text: string, index: number) {
+    if (speakingIndex === index) {
+      stopSpeaking()
+      setSpeakingIndex(null)
+    } else {
+      readAloud(text, index)
+    }
   }
 
   /** Replaces the last reply with a new one for the same question. */
@@ -89,8 +150,9 @@ export default function ChatView(props: ChatViewProps) {
     let lastUser = messages.length - 1
     while (lastUser >= 0 && messages[lastUser].role !== 'user') lastUser--
     if (lastUser < 0 || generating) return
+    stopSpeaking()
     setMessages((prev) => [...prev.slice(0, lastUser + 1), { role: 'assistant', content: '' }])
-    streamInto(toHistory(messages.slice(0, lastUser + 1)))
+    streamInto(toHistory(messages.slice(0, lastUser + 1)), lastUser + 1)
   }
 
   async function copyReply(text: string, index: number) {
@@ -109,8 +171,9 @@ export default function ChatView(props: ChatViewProps) {
     copyReply(text, index)
   }
 
-  /** Streams a reply into the empty assistant message at the end of the list. */
-  async function streamInto(history: ChatMessage[]) {
+  /** Streams a reply into the empty assistant message at the end of the list (at replyIndex). */
+  async function streamInto(history: ChatMessage[], replyIndex: number) {
+    let replyText = ''
     setGenerating(true)
     const controller = new AbortController()
     controllerRef.current = controller
@@ -126,10 +189,14 @@ export default function ChatView(props: ChatViewProps) {
       const { tokensPerSecond } = await generateReply(
         history,
         { reply: replySettings, context },
-        (piece) => updateLast((m) => ({ ...m, content: m.content + piece })),
+        (piece) => {
+          replyText += piece
+          updateLast((m) => ({ ...m, content: m.content + piece }))
+        },
         controller.signal,
       )
       updateLast((m) => ({ ...m, tokensPerSecond }))
+      if (replySettings.readAloud === 'on' && replyText.trim()) readAloud(replyText, replyIndex)
     } catch (err) {
       if (isAbortError(err)) {
         updateLast((m) => (m.content ? m : { ...m, content: 'Stopped.', error: true }))
@@ -248,6 +315,16 @@ export default function ChatView(props: ChatViewProps) {
                         </button>
                       </>
                     )}
+                    {!m.error && (
+                      <button
+                        className="msg-action"
+                        aria-label={speakingIndex === i ? 'Stop reading' : 'Read aloud'}
+                        title={speakingIndex === i ? 'Stop reading' : 'Read aloud'}
+                        onClick={() => toggleReadAloud(m.content, i)}
+                      >
+                        {speakingIndex === i ? <StopIcon /> : <SpeakerIcon />}
+                      </button>
+                    )}
                     {i === messages.length - 1 && (
                       <button
                         className="msg-action"
@@ -279,6 +356,11 @@ export default function ChatView(props: ChatViewProps) {
           send(input)
         }}
       >
+        {(listening || voiceError) && (
+          <p className={`container voice-status${voiceError ? ' error' : ''}`} role="status">
+            {voiceError ?? 'Listening… speak now, then pause to send.'}
+          </p>
+        )}
         {(documents.length > 0 || attachStatus.reading || attachStatus.error) && (
           <div className="container doc-chips">
             {documents.map((doc) => (
@@ -316,6 +398,18 @@ export default function ChatView(props: ChatViewProps) {
               if (file) onAttach(file)
             }}
           />
+          {micAvailable && (
+            <button
+              type="button"
+              className={`icon-btn mic${listening ? ' listening' : ''}`}
+              aria-label={listening ? 'Stop listening' : 'Speak a message'}
+              title={listening ? 'Stop listening' : 'Speak a message'}
+              onClick={toggleListening}
+              disabled={generating}
+            >
+              <MicIcon />
+            </button>
+          )}
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}

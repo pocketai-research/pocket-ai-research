@@ -47,10 +47,12 @@ export interface ReplySettings {
   language: 'english' | 'indonesian' | 'auto'
   length: 'short' | 'normal' | 'detailed'
   creativity: 'precise' | 'balanced' | 'creative'
+  /** Read each reply aloud with the device's voice when it is finished. */
+  readAloud: 'off' | 'on'
 }
 
 const REPLY_KEY = 'pocket-ai:replies'
-const DEFAULT_REPLY_SETTINGS: ReplySettings = { language: 'english', length: 'normal', creativity: 'balanced' }
+const DEFAULT_REPLY_SETTINGS: ReplySettings = { language: 'english', length: 'normal', creativity: 'balanced', readAloud: 'off' }
 
 export function readReplySettings(): ReplySettings {
   try {

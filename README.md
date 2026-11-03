@@ -46,6 +46,11 @@ Models are downloaded from Hugging Face on first use and kept in the app's priva
 
 The web version is an installable Progressive Web App. A service worker precaches the whole app, including the AI engine's WebAssembly (about 13 MB), so after the first visit the site opens with no internet. Use **Install app** on the start page, or the browser's install option, to add it to the home screen or desktop. Downloaded models, chats, documents and offline map areas are stored in the browser either way. The Android app does not register the service worker: its files ship inside the APK.
 
+## Voice
+
+- **Speak a message:** tap the microphone in the chat box, speak, and pause; the words are sent as a message. In the Android app this uses the phone's own speech recogniser through [@capacitor-community/speech-recognition](https://github.com/capacitor-community/speech-recognition); it works offline once the language's offline speech pack is installed (Settings → Google → Voice). In the browser it uses the Web Speech API, which in Chrome sends audio to Google and needs internet.
+- **Read replies aloud:** tap the speaker under a reply, or turn on **Read replies aloud** under AI replies. It uses the device's voices ([@capacitor-community/text-to-speech](https://github.com/capacitor-community/text-to-speech) on Android, `speechSynthesis` on the web), reads Markdown as plain sentences, and picks Indonesian or English from the reply language setting (or guesses it from the text) ([src/voice.ts](src/voice.ts)).
+
 ## Ask your documents
 
 Tap the paperclip in a chat to attach a PDF, TXT or Markdown file, then ask about it. Everything happens on the device:
@@ -132,6 +137,7 @@ Keep the keystore and its password backed up outside the repository. Never commi
 - [x] **AI Map 1**: online world map with country → province → regency → district selection, GPS, and offline downloads
 - [x] **AI Map 2**: search places (online and offline) and ask the AI about them ("nearest hospital?")
 - [ ] **AI Map 3**: offline directions drawn on the map and explained by the AI
+- [x] **Voice**: speak messages and have replies read aloud
 - [x] **Phase 3b**: installable offline web app (PWA) and multi-threading on GitHub Pages
 - [ ] **Phase 4**: custom domain and design polish
 - [ ] **Phase 5**: ask your documents, task templates, voice input

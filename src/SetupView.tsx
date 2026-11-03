@@ -88,7 +88,7 @@ export default function SetupView(props: SetupViewProps) {
               Back to chat
             </button>
           ) : (
-            <span className="badge">Preview v0.9</span>
+            <span className="badge">Preview v0.10</span>
           )}
         </div>
       </header>
@@ -160,8 +160,9 @@ export default function SetupView(props: SetupViewProps) {
         <section className="section">
           <h2>AI replies</h2>
           <p className="section-intro">
-            Changes apply to the next reply. Indonesian replies work best with the Balanced model; the Light model often
-            answers in English anyway.
+            Changes apply to the next reply. Indonesian replies work best with the Balanced or Smart model; the Light model often
+            answers in English anyway. Voice uses the device's own speech services; on Android, speaking to the app
+            works offline once the language's offline speech pack is installed (Settings, Google, Voice).
           </p>
           <div className="settings">
             <Choice
@@ -193,6 +194,15 @@ export default function SetupView(props: SetupViewProps) {
                 ['creative', 'Creative'],
               ]}
               onChange={(creativity) => onReplySettingsChange({ ...replySettings, creativity })}
+            />
+            <Choice
+              label="Read replies aloud"
+              value={replySettings.readAloud}
+              options={[
+                ['off', 'Off'],
+                ['on', 'On'],
+              ]}
+              onChange={(readAloud) => onReplySettingsChange({ ...replySettings, readAloud })}
             />
           </div>
         </section>

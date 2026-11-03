@@ -58,6 +58,24 @@ export const FileIcon = () => (
   </svg>
 )
 
+export const MicIcon = () => (
+  <svg {...base}>
+    <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3" />
+  </svg>
+)
+
+export const SpeakerIcon = () => (
+  <svg {...base} width={16} height={16}>
+    <path d="M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12" />
+  </svg>
+)
+
+export const StopIcon = () => (
+  <svg {...base} width={16} height={16}>
+    <path d="M7 7h10v10H7z" />
+  </svg>
+)
+
 export const CopyIcon = () => (
   <svg {...base} width={16} height={16}>
     <path d="M9 9h10v10H9zM5 15V5h10" />

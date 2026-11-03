@@ -1,7 +1,7 @@
 {
   "name": "pocket-ai-research",
   "private": true,
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "An AI assistant that runs entirely on your device and keeps working offline.",
   "type": "module",
   "scripts": {
@@ -11,6 +11,8 @@
     "android:sync": "npm run build && cap sync android"
   },
   "dependencies": {
+    "@capacitor-community/speech-recognition": "^7.0.1",
+    "@capacitor-community/text-to-speech": "^8.0.2",
     "@capacitor/android": "^8.6.0",
     "@capacitor/core": "^8.6.0",
     "@capacitor/share": "^8.0.3",

@@ -35,6 +35,7 @@ Requirements: Android 7.0 or newer, at least 4 GB RAM, and 0.5 to 1.1 GB of free
 | Light | Qwen2.5 0.5B Instruct (Q4_K_M) | 491 MB | Phones, short questions |
 | Balanced | Qwen2.5 1.5B Instruct (Q4_K_M) | 1.1 GB | Laptops and newer phones |
 | Smart | Qwen3 1.7B (Q4_K_M, thinking mode off) | 1.1 GB | Best reasoning and Indonesian; a little slower |
+| Vision | InternVL3 1B (Q8_0) + image projector | 1.0 GB | Questions about photos, including text in them |
 
 Under **AI replies** you can choose the reply language (English, Indonesian, or the language of your message), the length and the style. Small models follow the language setting unreliably: Indonesian replies work best with the Balanced model. Each reply can be copied, shared, or regenerated.
 
@@ -45,6 +46,12 @@ Models are downloaded from Hugging Face on first use and kept in the app's priva
 ## Web app (PWA)
 
 The web version is an installable Progressive Web App. A service worker precaches the whole app, including the AI engine's WebAssembly (about 13 MB), so after the first visit the site opens with no internet. Use **Install app** on the start page, or the browser's install option, to add it to the home screen or desktop. Downloaded models, chats, documents and offline map areas are stored in the browser either way. The Android app does not register the service worker: its files ship inside the APK.
+
+## Read photos
+
+Tap the camera button in the chat box to take or choose a photo, then ask about it (or just send it: the default question is "Describe this photo."). Photos need the **Vision** model, InternVL3 1B, which wllama loads together with its image projector (mmproj); with another model open, the app offers to switch. Photos are scaled down to 448 px before they are sent ([src/photo.ts](src/photo.ts)): that is one tile for the image encoder, while llama.cpp cuts larger photos into several tiles and reading them takes about five times longer. Photos are saved with the chat, and only the most recent photo in a chat is shown to the model, so follow-up questions about it work while older photos do not use up memory.
+
+Looking at a photo is slow on a CPU: about 2 minutes for the first answer on a 4-core laptop with 2 threads. Follow-up questions about the same photo are answered in seconds, because the photo stays in the model's memory. Small text in a photo is hard to read at 448 px; photograph documents up close.
 
 ## Voice
 
@@ -137,6 +144,7 @@ Keep the keystore and its password backed up outside the repository. Never commi
 - [x] **AI Map 1**: online world map with country → province → regency → district selection, GPS, and offline downloads
 - [x] **AI Map 2**: search places (online and offline) and ask the AI about them ("nearest hospital?")
 - [ ] **AI Map 3**: offline directions drawn on the map and explained by the AI
+- [x] **Read photos**: ask about a photo with the Vision model (InternVL3 1B)
 - [x] **Voice**: speak messages and have replies read aloud
 - [x] **Phase 3b**: installable offline web app (PWA) and multi-threading on GitHub Pages
 - [ ] **Phase 4**: custom domain and design polish

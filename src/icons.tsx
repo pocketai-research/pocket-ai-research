@@ -58,6 +58,13 @@ export const FileIcon = () => (
   </svg>
 )
 
+export const CameraIcon = () => (
+  <svg {...base}>
+    <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+    <circle cx="12" cy="13" r="3.5" />
+  </svg>
+)
+
 export const MicIcon = () => (
   <svg {...base}>
     <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3" />

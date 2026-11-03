@@ -8,6 +8,7 @@ import { ACCEPTED_FILES } from './docs/extract'
 import { retrieve } from './docs/retrieve'
 import { getDocuments, type DocSummary } from './docs/store'
 import {
+  CameraIcon,
   CopyIcon,
   FileIcon,
   MapIcon,
@@ -22,6 +23,7 @@ import {
   StopIcon,
 } from './icons'
 import Markdown from './Markdown'
+import { photoToDataUrl } from './photo'
 import type { ReplySettings } from './settings'
 import { canListen, listen, speak, speechLanguage, stopListening, stopSpeaking } from './voice'
 
@@ -37,6 +39,8 @@ interface ChatViewProps {
   attachStatus: { reading?: string; error?: string }
   onAttach: (file: File) => void
   onDetach: (id: string) => void
+  /** Opens the vision model, for photos. */
+  onUseVisionModel: () => void
   onShowModels: () => void
   onShowMap: () => void
   onNewChat: () => void
@@ -69,12 +73,16 @@ async function copyText(text: string) {
 }
 
 const toHistory = (entries: ChatEntry[]): ChatMessage[] =>
-  entries.filter((m) => !m.error && m.content).map(({ role, content }) => ({ role, content }))
+  entries.filter((m) => !m.error && m.content).map(({ role, content, image }) => ({ role, content, image }))
 
 export default function ChatView(props: ChatViewProps) {
   const { loaded, replySettings, chatId, messages, setMessages, onShowModels, onShowMap, onNewChat, onOpenChat } = props
-  const { onDeleteChat, documents, attachStatus, onAttach, onDetach } = props
+  const { onDeleteChat, documents, attachStatus, onAttach, onDetach, onUseVisionModel } = props
   const fileRef = useRef<HTMLInputElement>(null)
+  const photoRef = useRef<HTMLInputElement>(null)
+  // A photo waiting to be sent with the next message, and whether to explain that it needs the vision model.
+  const [photo, setPhoto] = useState<string | null>(null)
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [generating, setGenerating] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -100,12 +108,32 @@ export default function ChatView(props: ChatViewProps) {
     setMessages((prev) => [...prev.slice(0, -1), patch(prev[prev.length - 1])])
 
   function send(text: string) {
-    const content = text.trim()
+    const image = photo ?? undefined
+    const content = text.trim() || (image ? 'Describe this photo.' : '')
     if (!content || generating) return
     stopSpeaking()
-    setMessages((prev) => [...prev, { role: 'user', content }, { role: 'assistant', content: '' }])
+    const message: ChatEntry = { role: 'user', content, image }
+    setMessages((prev) => [...prev, message, { role: 'assistant', content: '' }])
     setInput('')
-    streamInto([...toHistory(messages), { role: 'user', content }], messages.length + 1)
+    setPhoto(null)
+    streamInto([...toHistory(messages), message], messages.length + 1)
+  }
+
+  function pickPhoto() {
+    if (!loaded.vision) {
+      setPhotoNotice('Photos need the Vision model.')
+      return
+    }
+    setPhotoNotice(null)
+    photoRef.current?.click()
+  }
+
+  async function addPhoto(file: File) {
+    try {
+      setPhoto(await photoToDataUrl(file))
+    } catch {
+      setPhotoNotice('This image could not be opened. Try a JPEG or PNG photo.')
+    }
   }
 
   /** Speech input: the transcript fills the box as it forms and is sent when the speaker pauses. */
@@ -295,8 +323,12 @@ export default function ChatView(props: ChatViewProps) {
             messages.map((m, i) => (
               <div key={i} className={`msg ${m.role}${m.error ? ' error' : ''}`}>
                 <div className="bubble">
+                  {m.image && <img className="msg-photo" src={m.image} alt="Photo sent with this message" />}
                   {!m.content ? (
-                    <span className="thinking">Thinking…</span>
+                    <span className="thinking">
+                      {/* Encoding a photo takes far longer than reading text, so say so. */}
+                      {messages[i - 1]?.image ? 'Looking at the photo… this can take a few minutes on a phone.' : 'Thinking…'}
+                    </span>
                   ) : m.role === 'assistant' && !m.error ? (
                     <Markdown text={m.content} />
                   ) : (
@@ -361,6 +393,28 @@ export default function ChatView(props: ChatViewProps) {
             {voiceError ?? 'Listening… speak now, then pause to send.'}
           </p>
         )}
+        {(photo || photoNotice) && (
+          <div className="container doc-chips">
+            {photo && (
+              <span className="photo-chip">
+                <img src={photo} alt="Photo to send" />
+                <button type="button" aria-label="Remove photo" onClick={() => setPhoto(null)}>
+                  ×
+                </button>
+              </span>
+            )}
+            {photoNotice && (
+              <span className="doc-error">
+                {photoNotice}{' '}
+                {!loaded.vision && (
+                  <button type="button" className="link" onClick={onUseVisionModel}>
+                    Switch to the Vision model
+                  </button>
+                )}
+              </span>
+            )}
+          </div>
+        )}
         {(documents.length > 0 || attachStatus.reading || attachStatus.error) && (
           <div className="container doc-chips">
             {documents.map((doc) => (
@@ -387,6 +441,27 @@ export default function ChatView(props: ChatViewProps) {
           >
             <PaperclipIcon />
           </button>
+          <button
+            type="button"
+            className="icon-btn attach"
+            aria-label="Add a photo"
+            title="Take or choose a photo"
+            onClick={pickPhoto}
+            disabled={generating}
+          >
+            <CameraIcon />
+          </button>
+          <input
+            ref={photoRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) addPhoto(file)
+            }}
+          />
           <input
             ref={fileRef}
             type="file"
@@ -428,7 +503,7 @@ export default function ChatView(props: ChatViewProps) {
               Stop
             </button>
           ) : (
-            <button type="submit" className="btn primary" disabled={!input.trim()}>
+            <button type="submit" className="btn primary" disabled={!input.trim() && !photo}>
               Send
             </button>
           )}

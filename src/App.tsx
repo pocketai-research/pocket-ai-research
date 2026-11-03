@@ -251,6 +251,11 @@ export default function App() {
         attachStatus={attachStatus}
         onAttach={attachDocument}
         onDetach={(id) => setChatDocs((docs) => docs.filter((d) => d.id !== id))}
+        onUseVisionModel={() => {
+          setView('setup')
+          const vision = MODELS.find((m) => m.mmprojUrl)
+          if (vision) openModel(vision)
+        }}
         onShowModels={() => setView('setup')}
         onShowMap={showMap}
         onNewChat={startNewChat}

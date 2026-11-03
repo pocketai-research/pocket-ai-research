@@ -15,6 +15,8 @@ import type { ModelOption } from './models'
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
+  /** A photo sent with a user message, as a JPEG data URL. */
+  image?: string
 }
 
 export interface LoadedModel {
@@ -22,6 +24,8 @@ export interface LoadedModel {
   settings: EngineSettings
   backend: 'GPU' | 'CPU'
   threads: number
+  /** Whether the model can look at images (a vision model with its projector loaded). */
+  vision: boolean
 }
 
 // Written in the target language: small models follow that far better than an English rule.
@@ -127,7 +131,8 @@ async function doLoadModel(
   for (let attempt = 0; ; attempt++) {
     instance = createWllama()
     try {
-      await instance.loadModelFromUrl(model.url, usedGpu ? params : { ...params, n_gpu_layers: 0 })
+      const source = model.mmprojUrl ? { url: model.url, mmprojUrl: model.mmprojUrl } : model.url
+      await instance.loadModelFromUrl(source, usedGpu ? params : { ...params, n_gpu_layers: 0 })
       // wllama resolves even when llama.cpp could not load the model, e.g. when WebAssembly
       // memory has no room for its weights; an empty vocabulary gives that away.
       if (!instance.getLoadedContextInfo().n_vocab) {
@@ -155,6 +160,7 @@ async function doLoadModel(
     // navigator.gpu can exist without a usable adapter, so ask for one.
     backend: usedGpu && (await hasWebGPU()) ? 'GPU' : 'CPU',
     threads: instance.isMultithread() ? instance.getNumThreads() : 1,
+    vision: instance.supportInputModality('image'),
   }
   return loaded
 }
@@ -199,13 +205,34 @@ export async function generateReply(
 
 // Rough token count (about 3 characters per token, on the safe side for Indonesian text).
 const estimateTokens = (text: string) => Math.ceil(text.length / 3) + 4
+// A photo becomes a few hundred tokens once the projector has encoded it.
+const IMAGE_TOKENS = 300
+const messageTokens = (m: ChatMessage, withImage: boolean) => estimateTokens(m.content) + (withImage ? IMAGE_TOKENS : 0)
 
-/** Drops the oldest messages until the prompt and the reply fit in the context window. */
+/**
+ * Drops the oldest messages until the prompt and the reply fit in the context window. Only the
+ * most recent photo is kept as an image; older ones become "[photo]".
+ */
 function fitHistory(history: ChatMessage[], budget: number) {
-  const kept = history.slice(-MAX_HISTORY)
-  let used = kept.reduce((sum, m) => sum + estimateTokens(m.content), 0)
-  while (kept.length > 1 && used > budget) used -= estimateTokens(kept.shift()!.content)
+  const lastImage = history.findLastIndex((m) => m.image)
+  const kept = history
+    .map((m, i) => (m.image && i !== lastImage ? { ...m, image: undefined, content: `[photo] ${m.content}` } : m))
+    .slice(-MAX_HISTORY)
+  let used = kept.reduce((sum, m) => sum + messageTokens(m, Boolean(m.image)), 0)
+  while (kept.length > 1 && used > budget) {
+    const dropped = kept.shift()!
+    used -= messageTokens(dropped, Boolean(dropped.image))
+  }
   return kept
+}
+
+/** The chat format wllama expects; a photo goes in as image bytes before the text. */
+async function toCompletionMessage(m: ChatMessage, vision: boolean): Promise<ChatCompletionMessage> {
+  if (m.role === 'user' && m.image && vision) {
+    const data = await (await fetch(m.image)).arrayBuffer()
+    return { role: 'user', content: [{ type: 'image', data }, { type: 'text', text: m.content }] }
+  }
+  return { role: m.role, content: m.content }
 }
 
 async function streamReply(
@@ -226,7 +253,11 @@ async function streamReply(
   if (last?.role === 'user' && options.reply.language !== 'auto') {
     recent[recent.length - 1] = { ...last, content: `${last.content}\n\n(${LANGUAGE_RULES[options.reply.language]})` }
   }
-  const messages: ChatCompletionMessage[] = [{ role: 'system', content: system }, ...recent]
+  const vision = loaded?.vision ?? false
+  const messages: ChatCompletionMessage[] = [
+    { role: 'system', content: system },
+    ...(await Promise.all(recent.map((m) => toCompletionMessage(m, vision)))),
+  ]
   const stream = await instance.createChatCompletion({
     messages,
     stream: true,

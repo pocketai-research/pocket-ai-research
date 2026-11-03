@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core'
 import { isBusy } from './settings'
 
 const RELOADED_KEY = 'pocket-ai:isolation-reload'
+const UPDATE_RELOAD_KEY = 'pocket-ai:update-reload'
 
 /**
  * Registers the service worker (src/sw.js) on the web; the Android app ships its files and sets
@@ -24,6 +25,21 @@ export function registerServiceWorker() {
   })
   navigator.serviceWorker.register('./sw.js').catch(() => {
     // Without the worker the app still works online, on one CPU thread.
+  })
+
+  // After an update the new worker deletes the old version's files, so a page still running the
+  // old version cannot load its lazily loaded parts (the map, the PDF reader). Reload into the new
+  // version, unless a model is busy, and at most once a minute so a missing file cannot loop.
+  window.addEventListener('vite:preloadError', (event) => {
+    if (isBusy()) return
+    try {
+      if (Date.now() - Number(sessionStorage.getItem(UPDATE_RELOAD_KEY) ?? 0) < 60_000) return
+      sessionStorage.setItem(UPDATE_RELOAD_KEY, String(Date.now()))
+    } catch {
+      return
+    }
+    event.preventDefault()
+    location.reload()
   })
 }
 

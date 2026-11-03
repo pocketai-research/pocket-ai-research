@@ -9,6 +9,8 @@ export interface ModelOption {
   contextSize?: number
   /** false turns off a model's thinking mode (Qwen3), which is slow on phones. */
   thinking?: boolean
+  /** Vision models: the projector that turns images into tokens the model understands. */
+  mmprojUrl?: string
   /** Shown on the model card when the licence asks for it. */
   attribution?: string
 }
@@ -42,5 +44,14 @@ export const MODELS: ModelOption[] = [
     // Qwen3 keeps 8 key/value heads, so its context costs about 4x more memory than Qwen2.5's.
     contextSize: 3072,
     thinking: false,
+  },
+  {
+    id: 'internvl3-1b',
+    name: 'InternVL3 1B',
+    tier: 'Vision',
+    size: '1.0 GB',
+    description: 'Reads photos, including text in them. Use it to ask about pictures.',
+    url: 'https://huggingface.co/ggml-org/InternVL3-1B-Instruct-GGUF/resolve/main/InternVL3-1B-Instruct-Q8_0.gguf',
+    mmprojUrl: 'https://huggingface.co/ggml-org/InternVL3-1B-Instruct-GGUF/resolve/main/mmproj-InternVL3-1B-Instruct-Q8_0.gguf',
   },
 ]

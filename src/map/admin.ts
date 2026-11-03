@@ -10,9 +10,14 @@ export interface AdminRegion {
   bbox: BBox
 }
 
-export interface AdminChildren {
-  level: number | null
+export interface AdminGroup {
+  level: number
   regions: AdminRegion[]
+}
+
+/** Usually one group; two when a region has subdivisions at two levels (e.g. China's SARs and provinces). */
+export interface AdminChildren {
+  groups: AdminGroup[]
 }
 
 // The main public instance is often at capacity, so fall back to a mirror.
@@ -36,8 +41,16 @@ const LEVEL_NAMES: Record<string, Record<number, string>> = {
   AU: { 4: 'States & territories', 6: 'Local government areas' },
 }
 
+/**
+ * Names only. These countries are left out of LEVEL_NAMES on purpose: two levels sit side by
+ * side at the top, so they need the two-level scan rather than a single known level.
+ */
+const SIDE_BY_SIDE_NAMES: Record<string, Record<number, string>> = {
+  CN: { 3: 'Special administrative regions', 4: 'Provinces, regions & municipalities', 5: 'Prefectures', 6: 'Counties' },
+}
+
 export function levelName(countryIso: string, level: number) {
-  return LEVEL_NAMES[countryIso]?.[level] ?? `Subdivisions (level ${level})`
+  return LEVEL_NAMES[countryIso]?.[level] ?? SIDE_BY_SIDE_NAMES[countryIso]?.[level] ?? `Subdivisions (level ${level})`
 }
 
 async function overpass(query: string): Promise<any> {
@@ -80,14 +93,16 @@ async function regionsAt(parent: { id: number; level: number; bbox: BBox }, leve
       .map(toRegion)
       .filter((r): r is AdminRegion => r !== null && r.level > parent.level)
       // Neighbours that only share a border can slip in; keep regions centred inside the parent.
-      .filter((r) => containsPoint(parent.bbox, bboxCenter(r.bbox)))
+      // Not for countries: their box is the main territory, which would drop Alaska or Hawaii.
+      .filter((r) => parent.level <= 2 || containsPoint(parent.bbox, bboxCenter(r.bbox)))
   )
 }
 
 /**
- * The next administrative level inside a region (e.g. a country's provinces). For countries
+ * The next administrative levels inside a region (e.g. a country's provinces). For countries
  * with known levels this asks for that level only; otherwise it scans two levels at a time and
- * keeps the shallowest one found. Results are cached on the device, since boundaries rarely change.
+ * returns every level found in the first window that has any. Results are cached on the device,
+ * since boundaries rarely change.
  */
 export async function fetchChildren(
   countryIso: string,
@@ -106,15 +121,15 @@ export async function fetchChildren(
   for (const levels of attempts) {
     const found = await regionsAt(parent, levels)
     if (found.length) {
-      const level = Math.min(...found.map((r) => r.level))
-      const regions = found.filter((r) => r.level === level).sort((a, b) => a.name.localeCompare(b.name))
-      const children = { level, regions }
-      await putAdmin(parent.id, children)
-      return children
+      const groups = [...new Set(found.map((r) => r.level))].sort((a, b) => a - b).map((level) => ({
+        level,
+        regions: found.filter((r) => r.level === level).sort((a, b) => a.name.localeCompare(b.name)),
+      }))
+      await putAdmin(parent.id, { groups })
+      return { groups }
     }
   }
 
-  const none = { level: null, regions: [] }
-  await putAdmin(parent.id, none)
-  return none
+  await putAdmin(parent.id, { groups: [] })
+  return { groups: [] }
 }

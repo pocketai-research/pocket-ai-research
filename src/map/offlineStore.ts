@@ -27,12 +27,17 @@ interface MapsDB extends DBSchema {
 let dbPromise: Promise<IDBPDatabase<MapsDB>> | null = null
 
 function db() {
-  dbPromise ??= openDB<MapsDB>('pocket-ai-maps', 1, {
-    upgrade(database) {
-      database.createObjectStore('areas', { keyPath: 'id' })
-      database.createObjectStore('tiles')
-      database.createObjectStore('assets')
-      database.createObjectStore('admin')
+  dbPromise ??= openDB<MapsDB>('pocket-ai-maps', 2, {
+    upgrade(database, oldVersion, _newVersion, transaction) {
+      if (oldVersion < 1) {
+        database.createObjectStore('areas', { keyPath: 'id' })
+        database.createObjectStore('tiles')
+        database.createObjectStore('assets')
+        database.createObjectStore('admin')
+      } else {
+        // Version 2 changed the cached region lists (grouped by level, overseas areas kept).
+        transaction.objectStore('admin').clear()
+      }
     },
   })
   return dbPromise

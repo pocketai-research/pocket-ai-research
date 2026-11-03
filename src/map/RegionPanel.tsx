@@ -191,14 +191,15 @@ export default function RegionPanel(props: RegionPanelProps) {
           </button>
         </p>
       )}
+      {children?.status === 'done' && children.data.groups.length === 0 && (
+        <p className="muted">There are no smaller areas here.</p>
+      )}
       {children?.status === 'done' &&
-        (children.data.level === null ? (
-          <p className="muted">There are no smaller areas here.</p>
-        ) : (
-          <>
-            <h3 className="list-title">{levelName(country.iso, children.data.level)}</h3>
+        children.data.groups.map((group) => (
+          <div key={group.level}>
+            <h3 className="list-title">{levelName(country.iso, group.level)}</h3>
             <ul className="region-list">
-              {children.data.regions.map((region) => (
+              {group.regions.map((region) => (
                 <li key={region.id}>
                   <button onClick={() => chooseRegion(region)}>
                     {region.name}
@@ -207,7 +208,7 @@ export default function RegionPanel(props: RegionPanelProps) {
                 </li>
               ))}
             </ul>
-          </>
+          </div>
         ))}
     </>
   )

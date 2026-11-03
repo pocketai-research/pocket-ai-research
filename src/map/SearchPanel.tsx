@@ -23,6 +23,15 @@ interface SearchPanelProps {
   onFocus: (place: Place) => void
   /** Draws the route on the map, or clears it. */
   onRoute: (route: Route | null) => void
+  /** A search asked for from outside the panel (the emergency buttons); a new id runs it. */
+  request: SearchRequest | null
+}
+
+export interface SearchRequest {
+  id: number
+  question: string
+  /** Also write an AI answer (skipped for emergencies, where every second counts). */
+  ai: boolean
 }
 
 const EXAMPLES = ['Nearest hospital', 'Masjid terdekat', 'Rute ke SPBU terdekat', 'ATM near me']
@@ -43,7 +52,7 @@ interface Directions {
   error?: string
 }
 
-export default function SearchPanel({ area, online, ai, getOrigin, onResults, onFocus, onRoute }: SearchPanelProps) {
+export default function SearchPanel({ area, online, ai, getOrigin, onResults, onFocus, onRoute, request }: SearchPanelProps) {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -98,7 +107,14 @@ export default function SearchPanel({ area, online, ai, getOrigin, onResults, on
     onRoute(null)
   }
 
-  async function run(question: string) {
+  useEffect(() => {
+    if (!request) return
+    setInput(request.question)
+    run(request.question, request.ai)
+    // Runs once per request; run itself changes on every render.
+  }, [request?.id])
+
+  async function run(question: string, withAi = true) {
     const query = parseQuery(question)
     if (!query.category && !query.text) return
     const origin = getOrigin()
@@ -127,7 +143,7 @@ export default function SearchPanel({ area, online, ai, getOrigin, onResults, on
         if (controller.signal.aborted) return
         if (route) context = routeContext(route, places[0], origin.label)
       }
-      if (ai.ready) {
+      if (ai.ready && withAi) {
         await generateReply(
           [{ role: 'user', content: question }],
           { reply: ai.reply, context },

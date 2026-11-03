@@ -3,6 +3,7 @@ import { Share } from '@capacitor/share'
 import { describeError, generateReply, isAbortError, type ChatMessage, type LoadedModel } from './ai/engine'
 import Brand from './Brand'
 import ChatHistory from './ChatHistory'
+import { copyText } from './clipboard'
 import type { ChatEntry, Conversation } from './chatStore'
 import { ACCEPTED_FILES } from './docs/extract'
 import { retrieve } from './docs/retrieve'
@@ -68,22 +69,6 @@ const INSTRUCTION_PRESETS = [
   'Explain things simply, as if to a 12-year-old.',
   'Always reply in casual Indonesian.',
 ]
-
-/** Clipboard API first; the textarea fallback covers WebViews that refuse it. */
-async function copyText(text: string) {
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    const area = document.createElement('textarea')
-    area.value = text
-    document.body.append(area)
-    area.select()
-    const ok = document.execCommand('copy')
-    area.remove()
-    return ok
-  }
-}
 
 const toHistory = (entries: ChatEntry[]): ChatMessage[] =>
   entries.filter((m) => !m.error && m.content).map(({ role, content, image, detail }) => ({ role, content, image, detail }))

@@ -238,6 +238,13 @@ h2 {
   white-space: nowrap;
 }
 
+/* Links styled as buttons (Download, Send by SMS). */
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -1461,4 +1468,132 @@ h2 {
 
 .update-banner span {
   flex: 1 1 200px;
+}
+
+/* Emergency (SOS) */
+
+.sos-btn {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--danger);
+  color: var(--surface);
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.sos-btn:focus-visible {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+}
+
+.emergency {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.emergency-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.emergency h3 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--danger);
+}
+
+.emergency section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emergency h4 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.emergency .small {
+  margin: 0;
+}
+
+.sos-numbers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sos-call {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.sos-call strong {
+  font-size: 20px;
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
+}
+
+.sos-call span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.sos-help,
+.sos-share {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sos-coords {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.sos-coords strong {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sos-coords span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.sos-compass {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.sos-compass svg {
+  flex: none;
+  transition: transform 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sos-compass svg {
+    transition: none;
+  }
 }

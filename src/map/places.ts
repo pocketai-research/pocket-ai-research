@@ -45,7 +45,9 @@ const CATEGORIES: Category[] = [
   { label: 'schools and universities', kinds: ['school', 'kindergarten', 'college', 'university'], words: ['school', 'university', 'college', 'campus', 'sekolah', 'universitas', 'kampus', 'sd', 'smp', 'sma', 'smk'] },
   { label: 'hotels', kinds: ['lodging', 'hotel', 'hostel', 'motel', 'guest_house'], words: ['hotel', 'hostel', 'stay', 'penginapan', 'losmen', 'homestay', 'guest house'] },
   { label: 'shops and markets', kinds: ['grocery', 'supermarket', 'convenience', 'marketplace', 'mall'], words: ['supermarket', 'minimarket', 'market', 'shop', 'store', 'mall', 'pasar', 'toko', 'indomaret', 'alfamart', 'belanja'] },
-  { label: 'police stations', kinds: ['police'], words: ['police', 'polisi', 'polsek', 'polres'] },
+  // "police station" must outrank the bus and train stops' "station" (the longest match wins).
+  { label: 'police stations', kinds: ['police'], words: ['police station', 'police', 'kantor polisi', 'polisi', 'polsek', 'polres'] },
+  { label: 'fire stations', kinds: ['fire_station'], words: ['fire station', 'fire brigade', 'pemadam', 'pemadam kebakaran', 'damkar'] },
   { label: 'bus and train stops', kinds: ['bus', 'bus_stop', 'bus_station', 'railway', 'station', 'halt'], words: ['bus', 'train', 'station', 'halte', 'stasiun', 'terminal', 'kereta'] },
   { label: 'toilets', kinds: ['toilets'], words: ['toilet', 'restroom', 'wc', 'kamar mandi'] },
   { label: 'parking', kinds: ['parking'], words: ['parking', 'parkir'] },

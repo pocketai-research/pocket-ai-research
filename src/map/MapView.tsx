@@ -17,8 +17,9 @@ import { offlineStyle } from './offlineMap'
 import { listAreas, type OfflineArea } from './offlineStore'
 import type { Place } from './places'
 import type { Route } from './route'
+import EmergencyPanel, { type HelpKind, type Position } from './EmergencyPanel'
 import RegionPanel from './RegionPanel'
-import type { SearchOrigin } from './SearchPanel'
+import type { SearchOrigin, SearchRequest } from './SearchPanel'
 import type { ReplySettings } from '../settings'
 
 // MapLibre 6 looks for its worker next to its own module, which bundling breaks.
@@ -117,6 +118,12 @@ function showRoute(map: MapLibreMap, route: Route | null) {
   map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout, paint: { 'line-color': '#2563eb', 'line-width': 5 } }, below)
 }
 
+const HELP_QUESTIONS: Record<HelpKind, string> = {
+  hospital: 'route to the nearest hospital',
+  police: 'route to the nearest police station',
+  fire: 'route to the nearest fire station',
+}
+
 interface MapViewProps {
   onBack: () => void
   /** Whether an AI model is open, for written answers to place searches. */
@@ -131,6 +138,10 @@ export default function MapView({ onBack, ai }: MapViewProps) {
   const [areas, setAreas] = useState<OfflineArea[]>([])
   const [mode, setMode] = useState<Mode | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const geolocateRef = useRef<GeolocateControl | null>(null)
+  const [position, setPosition] = useState<Position | null>(null)
+  const [emergency, setEmergency] = useState(false)
+  const [searchRequest, setSearchRequest] = useState<SearchRequest | null>(null)
 
   const refreshAreas = () => listAreas().then(setAreas)
 
@@ -168,7 +179,9 @@ export default function MapView({ onBack, ai }: MapViewProps) {
 
       const geolocate = new GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true })
       geolocate.on('geolocate', (event) => {
-        positionRef.current = [event.coords.longitude, event.coords.latitude]
+        const { longitude, latitude, accuracy, altitude } = event.coords
+        positionRef.current = [longitude, latitude]
+        setPosition({ lon: longitude, lat: latitude, accuracy, altitude })
         setMessage(null)
       })
       // Fired instead of 'geolocate' when the position is outside the offline area's bounds.
@@ -177,6 +190,7 @@ export default function MapView({ onBack, ai }: MapViewProps) {
       )
       geolocate.on('error', () => setMessage('Location is unavailable. Allow location access and turn on GPS.'))
       map.addControl(geolocate, 'top-right')
+      geolocateRef.current = geolocate
     }
     create().catch((err: Error) => !cancelled && setMessage(err.message))
 
@@ -184,6 +198,7 @@ export default function MapView({ onBack, ai }: MapViewProps) {
       cancelled = true
       map?.remove()
       mapRef.current = null
+      geolocateRef.current = null
     }
   }, [mode])
 
@@ -237,6 +252,22 @@ export default function MapView({ onBack, ai }: MapViewProps) {
     return bounds ? [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()] : null
   }
 
+  /** Starts GPS tracking, unless it is already on (trigger() would turn it off again). */
+  function locate() {
+    if (!positionRef.current) geolocateRef.current?.trigger()
+  }
+
+  function openEmergency() {
+    setEmergency(true)
+    locate()
+  }
+
+  // The nearest help is searched from the GPS position, with directions and no AI answer.
+  function findNearest(kind: HelpKind) {
+    setEmergency(false)
+    setSearchRequest({ id: Date.now(), question: HELP_QUESTIONS[kind], ai: false })
+  }
+
   const status = mode?.kind === 'offline' ? `Offline · ${mode.area.name}` : online ? 'Online map' : 'No connection'
 
   return (
@@ -252,7 +283,12 @@ export default function MapView({ onBack, ai }: MapViewProps) {
               <span>{status}</span>
             </div>
           </div>
-          <span className="badge">{mode?.kind === 'offline' ? 'Offline' : 'Online'}</span>
+          <div className="topbar-actions">
+            <button className="sos-btn" aria-label="Emergency" title="Emergency numbers, nearest help and your location" onClick={openEmergency}>
+              SOS
+            </button>
+            <span className="badge">{mode?.kind === 'offline' ? 'Offline' : 'Online'}</span>
+          </div>
         </div>
       </header>
       <div className="map-area">
@@ -276,6 +312,18 @@ export default function MapView({ onBack, ai }: MapViewProps) {
           onResults={showResults}
           onFocus={focusPlace}
           onRoute={drawRoute}
+          searchRequest={searchRequest}
+          emergency={
+            emergency && (
+              <EmergencyPanel
+                position={position}
+                indonesian={ai.reply.language === 'indonesian'}
+                onLocate={locate}
+                onFindNearest={findNearest}
+                onClose={() => setEmergency(false)}
+              />
+            )
+          }
         />
       </div>
     </div>

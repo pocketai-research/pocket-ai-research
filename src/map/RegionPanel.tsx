@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronDownIcon, ChevronUpIcon, TrashIcon } from '../icons'
 import { fetchChildren, levelName, type AdminChildren, type AdminRegion } from './admin'
 import { COUNTRIES, type Country } from './countries'
@@ -7,7 +7,7 @@ import { detailLabel, type BBox } from './geo'
 import { deleteArea, type OfflineArea } from './offlineStore'
 import type { Place } from './places'
 import type { Route } from './route'
-import SearchPanel, { type SearchOrigin } from './SearchPanel'
+import SearchPanel, { type SearchOrigin, type SearchRequest } from './SearchPanel'
 import type { ReplySettings } from '../settings'
 
 interface RegionPanelProps {
@@ -24,6 +24,9 @@ interface RegionPanelProps {
   onResults: (places: Place[], origin: SearchOrigin) => void
   onFocus: (place: Place) => void
   onRoute: (route: Route | null) => void
+  searchRequest: SearchRequest | null
+  /** The emergency panel, shown in place of the search while it is open. */
+  emergency: ReactNode
 }
 
 interface DownloadTarget {
@@ -54,6 +57,14 @@ export default function RegionPanel(props: RegionPanelProps) {
 
   // Stop a running download when the map is closed.
   useEffect(() => () => controllerRef.current?.abort(), [])
+
+  // The emergency panel and the searches it starts live on the Search tab: bring it into view.
+  const showSearch = Boolean(props.emergency) || props.searchRequest !== null
+  useEffect(() => {
+    if (!showSearch) return
+    setTab('search')
+    setCollapsed(false)
+  }, [showSearch, props.searchRequest?.id])
 
   useEffect(() => {
     if (!country || !current) return setChildren(null)
@@ -303,15 +314,19 @@ export default function RegionPanel(props: RegionPanelProps) {
         <div className="panel-body">
           {/* Kept mounted so a search and its answer survive switching tabs. */}
           <div hidden={tab !== 'search'} className="tab-page">
-            <SearchPanel
-              area={areas.find((a) => a.id === viewingAreaId) ?? null}
-              online={online}
-              ai={props.ai}
-              getOrigin={props.getOrigin}
-              onResults={props.onResults}
-              onFocus={props.onFocus}
-              onRoute={props.onRoute}
-            />
+            {props.emergency}
+            <div hidden={Boolean(props.emergency)} className="tab-page">
+              <SearchPanel
+                area={areas.find((a) => a.id === viewingAreaId) ?? null}
+                online={online}
+                ai={props.ai}
+                getOrigin={props.getOrigin}
+                onResults={props.onResults}
+                onFocus={props.onFocus}
+                onRoute={props.onRoute}
+                request={props.searchRequest}
+              />
+            </div>
           </div>
           {tab === 'regions' && regionsTab}
           {tab === 'offline' && offlineTab}

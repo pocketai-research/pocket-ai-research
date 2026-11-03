@@ -43,6 +43,25 @@ export function readEngineSettings(): EngineSettings {
 
 export const saveEngineSettings = (settings: EngineSettings) => write(SETTINGS_KEY, JSON.stringify(settings))
 
+export interface ReplySettings {
+  language: 'english' | 'indonesian' | 'auto'
+  length: 'short' | 'normal' | 'detailed'
+  creativity: 'precise' | 'balanced' | 'creative'
+}
+
+const REPLY_KEY = 'pocket-ai:replies'
+const DEFAULT_REPLY_SETTINGS: ReplySettings = { language: 'english', length: 'normal', creativity: 'balanced' }
+
+export function readReplySettings(): ReplySettings {
+  try {
+    return { ...DEFAULT_REPLY_SETTINGS, ...JSON.parse(read(REPLY_KEY) ?? '{}') }
+  } catch {
+    return DEFAULT_REPLY_SETTINGS
+  }
+}
+
+export const saveReplySettings = (settings: ReplySettings) => write(REPLY_KEY, JSON.stringify(settings))
+
 /**
  * Written synchronously before the model loads or replies and cleared afterwards. If it is
  * still present on the next launch, the app died mid-way (usually out of memory).

@@ -46,6 +46,24 @@ export const ArrowLeftIcon = () => (
   </svg>
 )
 
+export const CopyIcon = () => (
+  <svg {...base} width={16} height={16}>
+    <path d="M9 9h10v10H9zM5 15V5h10" />
+  </svg>
+)
+
+export const ShareIcon = () => (
+  <svg {...base} width={16} height={16}>
+    <path d="M12 3v12M7 8l5-5 5 5M5 14v5h14v-5" />
+  </svg>
+)
+
+export const RefreshIcon = () => (
+  <svg {...base} width={16} height={16}>
+    <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" />
+  </svg>
+)
+
 export const ChevronUpIcon = () => (
   <svg {...base}>
     <path d="M6 15l6-6 6 6" />

@@ -13,10 +13,13 @@ import {
 import {
   readEngineSettings,
   readLastModel,
+  readReplySettings,
   saveEngineSettings,
   saveLastModel,
+  saveReplySettings,
   takeBusyMarker,
   type EngineSettings,
+  type ReplySettings,
 } from './settings'
 import SetupView, { type LoadingState } from './SetupView'
 
@@ -66,6 +69,7 @@ export default function App() {
   const [messages, setMessages] = useState<ChatEntry[]>([])
   const [error, setError] = useState<string | null>(null)
   const [settings, setSettings] = useState<EngineSettings>(readEngineSettings)
+  const [replySettings, setReplySettings] = useState<ReplySettings>(readReplySettings)
   const [notice, setNotice] = useState(crashNotice)
   // JSON of the messages last written to (or read from) storage, to skip redundant saves.
   const savedSnapshot = useRef('[]')
@@ -102,6 +106,11 @@ export default function App() {
   function changeSettings(next: EngineSettings) {
     setSettings(next)
     saveEngineSettings(next)
+  }
+
+  function changeReplySettings(next: ReplySettings) {
+    setReplySettings(next)
+    saveReplySettings(next)
   }
 
   // Continue the most recent chat, so closing the app (or Android stopping it) loses nothing.
@@ -183,6 +192,7 @@ export default function App() {
     return (
       <ChatView
         loaded={active}
+        replySettings={replySettings}
         chatId={chatMeta.id}
         messages={messages}
         setMessages={setMessages}
@@ -205,6 +215,8 @@ export default function App() {
       notice={notice}
       settings={settings}
       onSettingsChange={changeSettings}
+      replySettings={replySettings}
+      onReplySettingsChange={changeReplySettings}
       onOpen={openModel}
       onDelete={removeModel}
       onBackToChat={active ? () => setView('chat') : undefined}

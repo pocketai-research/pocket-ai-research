@@ -35,6 +35,8 @@ Requirements: Android 7.0 or newer, at least 4 GB RAM, and 0.5 to 1.1 GB of free
 | Light | Qwen2.5 0.5B Instruct (Q4_K_M) | 491 MB | Phones, short questions |
 | Balanced | Qwen2.5 1.5B Instruct (Q4_K_M) | 1.1 GB | Laptops and newer phones |
 
+Under **AI replies** you can choose the reply language (English, Indonesian, or the language of your message), the length and the style. Small models follow the language setting unreliably: Indonesian replies work best with the Balanced model. Each reply can be copied, shared, or regenerated.
+
 Models are downloaded from Hugging Face on first use and kept in the app's private storage (the browser's Origin Private File System).
 
 ## Map
@@ -106,6 +108,7 @@ Keep the keystore and its password backed up outside the repository. Never commi
 - [x] **Phase 1**: project setup and automatic deployment
 - [x] **Phase 2**: on-device AI chat with a model picker, Android app
 - [x] **Phase 3a**: saved conversations and Markdown-formatted replies
+- [x] **Chat tools**: copy, share and regenerate replies; reply language, length and style settings
 - [x] **AI Map 1**: online world map with country → province → regency → district selection, GPS, and offline downloads
 - [ ] **AI Map 2**: search places offline and ask the AI about them ("nearest hospital?")
 - [ ] **AI Map 3**: offline directions drawn on the map and explained by the AI

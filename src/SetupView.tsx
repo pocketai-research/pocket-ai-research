@@ -3,7 +3,7 @@ import type { ModelOption } from './ai/models'
 import Brand, { REPO_URL } from './Brand'
 import { hasWebGPU } from './deviceCheck'
 import DeviceChecks from './DeviceChecks'
-import type { EngineSettings } from './settings'
+import type { EngineSettings, ReplySettings } from './settings'
 
 export interface LoadingState {
   modelId: string
@@ -19,10 +19,32 @@ interface SetupViewProps {
   notice: string | null
   settings: EngineSettings
   onSettingsChange: (settings: EngineSettings) => void
+  replySettings: ReplySettings
+  onReplySettingsChange: (settings: ReplySettings) => void
   onOpen: (model: ModelOption) => void
   onDelete: (model: ModelOption) => void
   onBackToChat?: () => void
   onShowMap: () => void
+}
+
+function Choice<T extends string>(props: {
+  label: string
+  value: T
+  options: [T, string][]
+  onChange: (value: T) => void
+}) {
+  return (
+    <div className="choice">
+      <span className="choice-label">{props.label}</span>
+      <div className="segmented" role="radiogroup" aria-label={props.label}>
+        {props.options.map(([value, text]) => (
+          <button key={value} role="radio" aria-checked={props.value === value} onClick={() => props.onChange(value)}>
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function LoadingProgress({ progress, cached }: { progress: number; cached: boolean }) {
@@ -43,7 +65,7 @@ function LoadingProgress({ progress, cached }: { progress: number; cached: boole
 
 export default function SetupView(props: SetupViewProps) {
   const { models, downloaded, loading, activeId, error, notice, settings, onSettingsChange, onOpen, onDelete } = props
-  const { onBackToChat, onShowMap } = props
+  const { onBackToChat, onShowMap, replySettings, onReplySettingsChange } = props
   const [gpuAvailable, setGpuAvailable] = useState(false)
 
   useEffect(() => {
@@ -60,7 +82,7 @@ export default function SetupView(props: SetupViewProps) {
               Back to chat
             </button>
           ) : (
-            <span className="badge">Preview v0.4.1</span>
+            <span className="badge">Preview v0.5</span>
           )}
         </div>
       </header>
@@ -120,6 +142,46 @@ export default function SetupView(props: SetupViewProps) {
                 </article>
               )
             })}
+          </div>
+        </section>
+
+        <section className="section">
+          <h2>AI replies</h2>
+          <p className="section-intro">
+            Changes apply to the next reply. Indonesian replies work best with the Balanced model; the Light model often
+            answers in English anyway.
+          </p>
+          <div className="settings">
+            <Choice
+              label="Language"
+              value={replySettings.language}
+              options={[
+                ['english', 'English'],
+                ['indonesian', 'Indonesian'],
+                ['auto', 'Match my message'],
+              ]}
+              onChange={(language) => onReplySettingsChange({ ...replySettings, language })}
+            />
+            <Choice
+              label="Length"
+              value={replySettings.length}
+              options={[
+                ['short', 'Short'],
+                ['normal', 'Normal'],
+                ['detailed', 'Detailed'],
+              ]}
+              onChange={(length) => onReplySettingsChange({ ...replySettings, length })}
+            />
+            <Choice
+              label="Style"
+              value={replySettings.creativity}
+              options={[
+                ['precise', 'Precise'],
+                ['balanced', 'Balanced'],
+                ['creative', 'Creative'],
+              ]}
+              onChange={(creativity) => onReplySettingsChange({ ...replySettings, creativity })}
+            />
           </div>
         </section>
 

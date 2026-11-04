@@ -61,6 +61,8 @@ The Light and Balanced models were chosen by comparing answers to Indonesian tas
 
 Models must stay well under 2 GB: in WebAssembly the weights need one allocation, and a 3B model (about 2 GB, e.g. Llama 3.2 3B) downloads but cannot load. The Smart model therefore is Qwen3 1.7B, with its thinking mode off unless you turn on Think first. It uses a 3,072-token context to save memory; older messages are dropped from what a model sees when a chat gets longer than its context.
 
+**Your own model:** under **Add your own model**, below the model cards, a chat model in GGUF format up to 1.5 GB can be added from a file on the device or from a link (a Hugging Face file page is turned into its download link) ([src/ai/customModels.ts](src/ai/customModels.ts)). A file is copied into the same storage as downloaded models and works offline at once; a link downloads the first time the model is opened. The app reads the start of the file to refuse what is not a model (such as the mmproj part of a vision model), to give Qwen3 models the Think first button, and to keep the context at 2,048 tokens at most. Added models are named after their file and can be removed like the others. Vision models cannot be added, nor gated models that need signing in to download.
+
 Models are downloaded from Hugging Face on first use and kept in the app's private storage (the browser's Origin Private File System).
 
 ## Web app (PWA)

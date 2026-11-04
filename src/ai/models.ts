@@ -17,6 +17,8 @@ export interface ModelOption {
   replacedBy?: string
   /** Tokens a second measured on the reference laptop (see src/deviceCheck.ts), to estimate speed on others. */
   referenceSpeed?: number
+  /** Added by the user (src/ai/customModels.ts): copied from a file on the device, or from a link. */
+  custom?: 'file' | 'link'
 }
 
 // Single-file Q4_K_M GGUFs. In WebAssembly the weights must fit in one allocation, which fails

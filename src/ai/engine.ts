@@ -107,6 +107,10 @@ async function doLoadModel(
   onProgress: (fraction: number) => void,
 ): Promise<LoadedModel> {
   if (loaded?.model.id === model.id && JSON.stringify(loaded.settings) === JSON.stringify(settings)) return loaded
+  // An imported file has no address to download it from again (see src/ai/customModels.ts).
+  if (model.custom === 'file' && !(await listDownloadedUrls()).has(model.url)) {
+    throw new Error(`The file of ${model.name} is no longer on this device. Remove the model and add the file again.`)
+  }
   await unloadModel()
   // Without this, the browser may delete downloaded models when the device runs low on space.
   await navigator.storage?.persist?.().catch(() => false)
@@ -119,7 +123,8 @@ async function doLoadModel(
     // thinking mode only works through it.
     jinja: true,
     // Thoughts arrive apart from the answer (reasoning_content); each request says whether to think.
-    ...(model.canThink ? { reasoning_format: 'deepseek' as const } : {}),
+    // An imported model may be a thinking model too: its thoughts are then kept out of the answer.
+    ...(model.canThink || model.custom ? { reasoning_format: 'deepseek' as const } : {}),
     // n_gpu_layers: 0 makes wllama skip WebGPU device setup entirely.
     ...(settings.gpu ? {} : { n_gpu_layers: 0 }),
     ...(settings.singleThread ? { n_threads: 1 } : {}),

@@ -3,6 +3,7 @@ import { EMBEDDING_MODEL } from './ai/embeddings'
 import { readAppearance, saveAppearance, type Appearance } from './appearance'
 import { describeSummary, exportBackup, importBackup } from './backup'
 import type { ModelOption } from './ai/models'
+import AddModelPanel from './AddModelPanel'
 import Brand, { REPO_URL } from './Brand'
 import { useInstallPrompt } from './pwa'
 import { engineThreads, estimateSpeed, hasWebGPU, recommendModel, speedScore } from './deviceCheck'
@@ -43,6 +44,8 @@ interface SetupViewProps {
   onDeleteDocument: (doc: DocSummary) => void
   onOpen: (model: ModelOption) => void
   onDelete: (model: ModelOption) => void
+  /** A model of the user's own was added from a file or a link. */
+  onModelAdded: (model: ModelOption) => void
   onBackToChat?: () => void
   onShowMap: () => void
 }
@@ -84,7 +87,7 @@ function LoadingProgress({ progress, cached }: { progress: number; cached: boole
 }
 
 export default function SetupView(props: SetupViewProps) {
-  const { models, downloaded, loading, activeId, error, notice, settings, onSettingsChange, onOpen, onDelete } = props
+  const { models, downloaded, loading, activeId, error, notice, settings, onSettingsChange, onOpen, onDelete, onModelAdded } = props
   const { onBackToChat, onShowMap, replySettings, onReplySettingsChange, documents, onDeleteDocument, banner } = props
   const { meaningStatus, memory, onMemoryChange, notes, onSaveNote, onDeleteNote, onDataImported } = props
   const [backupStatus, setBackupStatus] = useState<{ text: string; error?: boolean } | null>(null)
@@ -181,6 +184,8 @@ export default function SetupView(props: SetupViewProps) {
               const isLoading = loading?.modelId === m.id
               const successor = m.replacedBy && models.find((other) => other.id === m.replacedBy)
               const speed = score !== null && !m.replacedBy ? estimateSpeed(m, score, threads) : null
+              // An imported file the browser has since removed cannot be downloaded again.
+              const missing = m.custom === 'file' && downloaded !== null && !isDownloaded
               return (
                 <article
                   className={`card model-card${recommended === m ? ' recommended-card' : ''}${activeId === m.id ? ' active-card' : ''}`}
@@ -202,16 +207,19 @@ export default function SetupView(props: SetupViewProps) {
                     </small>
                   )}
                   {m.attribution && <small className="attribution">{m.attribution}</small>}
+                  {missing && <p className="alert">The file is no longer on this device. Remove the model and add the file again.</p>}
                   {isLoading && loading ? (
                     <LoadingProgress progress={loading.progress} cached={isDownloaded} />
                   ) : (
                     <div className="model-actions">
-                      <button className="btn primary" disabled={loading !== null} onClick={() => onOpen(m)}>
-                        {activeId === m.id ? 'Continue chatting' : isDownloaded ? 'Start chat' : `Download ${m.size}`}
-                      </button>
-                      {isDownloaded && (
+                      {!missing && (
+                        <button className="btn primary" disabled={loading !== null} onClick={() => onOpen(m)}>
+                          {activeId === m.id ? 'Continue chatting' : isDownloaded ? 'Start chat' : `Download ${m.size}`}
+                        </button>
+                      )}
+                      {(isDownloaded || m.custom) && (
                         <button className="btn ghost" disabled={loading !== null} onClick={() => onDelete(m)}>
-                          Delete
+                          {m.custom ? 'Remove' : 'Delete'}
                         </button>
                       )}
                     </div>
@@ -221,6 +229,7 @@ export default function SetupView(props: SetupViewProps) {
               )
             })}
           </div>
+          <AddModelPanel disabled={loading !== null} onAdded={onModelAdded} />
         </section>
 
         <section className="section">

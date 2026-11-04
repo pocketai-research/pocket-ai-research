@@ -1,5 +1,6 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { deleteModel, describeError, listDownloadedUrls, loadModel, type LoadedModel } from './ai/engine'
+import { forgetCustomModel, readCustomModels } from './ai/customModels'
 import { MODELS, type ModelOption } from './ai/models'
 import ChatView from './ChatView'
 import {
@@ -65,7 +66,7 @@ function recoverFromCrash(): string | null {
   }
   saveEngineSettings(settings)
 
-  const name = MODELS.find((m) => m.id === marker.modelId)?.name ?? 'the model'
+  const name = [...MODELS, ...readCustomModels()].find((m) => m.id === marker.modelId)?.name ?? 'the model'
   const when = marker.phase === 'loading' ? `while loading ${name}` : `while ${name} was replying`
   return `Pocket Ai Research closed unexpectedly ${when}, usually because the device ran out of memory. ${change} If you closed the app yourself, you can change this under Performance.`
 }
@@ -78,6 +79,9 @@ const newChatMeta = (): ChatMeta => ({ id: crypto.randomUUID(), createdAt: Date.
 
 export default function App() {
   const [downloaded, setDownloaded] = useState<Set<string> | null>(null)
+  // Models the user added (src/ai/customModels.ts) come after the built-in ones.
+  const [customModels, setCustomModels] = useState(readCustomModels)
+  const models = useMemo(() => [...MODELS, ...customModels], [customModels])
   const [loading, setLoading] = useState<LoadingState | null>(null)
   const [active, setActive] = useState<LoadedModel | null>(null)
   const [view, setView] = useState<'setup' | 'chat' | 'map'>('setup')
@@ -167,7 +171,7 @@ export default function App() {
   useEffect(() => {
     listDownloadedUrls().then((urls) => {
       setDownloaded(urls)
-      const last = MODELS.find((m) => m.id === readLastModel())
+      const last = [...MODELS, ...readCustomModels()].find((m) => m.id === readLastModel())
       if (!crashNotice && last && urls.has(last.url)) openModel(last)
     })
   }, [])
@@ -344,8 +348,15 @@ export default function App() {
   }
 
   async function removeModel(model: ModelOption) {
-    if (!confirm(`Delete ${model.name} from this device? You will need to download it again to use it.`)) return
+    const question = model.custom
+      ? `Remove ${model.name} from this device?${model.custom === 'file' ? ' To use it again, add its file again.' : ''}`
+      : `Delete ${model.name} from this device? You will need to download it again to use it.`
+    if (!confirm(question)) return
     await deleteModel(model)
+    if (model.custom) {
+      forgetCustomModel(model.id)
+      setCustomModels(readCustomModels())
+    }
     if (active?.model.id === model.id) setActive(null)
     refreshDownloaded()
   }
@@ -418,7 +429,11 @@ export default function App() {
 
   return (
     <SetupView
-      models={MODELS}
+      models={models}
+      onModelAdded={() => {
+        setCustomModels(readCustomModels())
+        refreshDownloaded()
+      }}
       banner={banner}
       downloaded={downloaded}
       loading={loading}

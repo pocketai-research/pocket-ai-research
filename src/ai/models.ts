@@ -17,6 +17,12 @@ export interface ModelOption {
   replacedBy?: string
   /** Tokens a second measured on the reference laptop (see src/deviceCheck.ts), to estimate speed on others. */
   referenceSpeed?: number
+  /**
+   * Writes the calculation for a word problem, which the app then works out (src/ai/tools.ts).
+   * Qwen3 1.7B wrote all four test problems right; Qwen3 0.6B one and Gemma 3 1B one, and a
+   * wrong calculation given to the model as exact is worse than none.
+   */
+  plansCalculations?: boolean
   /** Added by the user (src/ai/customModels.ts): copied from a file on the device, or from a link. */
   custom?: 'file' | 'link'
 }
@@ -60,6 +66,7 @@ export const MODELS: ModelOption[] = [
     // Qwen3 keeps 8 key/value heads, so its context costs about 4x more memory than Qwen2.5's.
     contextSize: 3072,
     canThink: true,
+    plansCalculations: true,
     referenceSpeed: 3.6,
   },
   {

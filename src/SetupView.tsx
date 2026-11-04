@@ -237,7 +237,9 @@ export default function SetupView(props: SetupViewProps) {
           <p className="section-intro">
             Changes apply to the next reply. Indonesian replies work best with the Balanced model; the Light model sometimes
             answers in English anyway. Voice uses the device's own speech services; on Android, speaking to the app
-            works offline once the language's offline speech pack is installed (Settings, Google, Voice).
+            works offline once the language's offline speech pack is installed (Settings, Google, Voice). With Tools on,
+            the app works out sums, dates and nearby places exactly and gives the results to the AI; nearby places use your
+            location.
           </p>
           <div className="settings">
             <Choice
@@ -269,6 +271,15 @@ export default function SetupView(props: SetupViewProps) {
                 ['creative', 'Creative'],
               ]}
               onChange={(creativity) => onReplySettingsChange({ ...replySettings, creativity })}
+            />
+            <Choice
+              label="Tools: calculator, dates, nearby places"
+              value={replySettings.tools}
+              options={[
+                ['on', 'On'],
+                ['off', 'Off'],
+              ]}
+              onChange={(tools) => onReplySettingsChange({ ...replySettings, tools })}
             />
             <Choice
               label="Read replies aloud"

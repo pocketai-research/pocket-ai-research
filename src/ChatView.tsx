@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type Dispatch, type ReactNode, type SetSta
 import { Share } from '@capacitor/share'
 import { embedTexts } from './ai/embeddings'
 import { describeError, generateReply, isAbortError, type ChatMessage, type LoadedModel } from './ai/engine'
+import { runTools } from './ai/tools'
 import Brand from './Brand'
 import ChatHistory from './ChatHistory'
 import { copyText } from './clipboard'
@@ -395,10 +396,21 @@ export default function ChatView(props: ChatViewProps) {
         }
       }
       if (sources.length) updateLast((m) => ({ ...m, sources }))
+      // Calculator, dates and nearby places, worked out by the app (src/ai/tools.ts).
+      let toolFacts: string | undefined
+      if (replySettings.tools === 'on') {
+        const used = await runTools(question, {
+          indonesian: reply.language === 'indonesian',
+          planCalculations: Boolean(loaded.model.plansCalculations),
+          signal: controller.signal,
+        })
+        toolFacts = used.facts
+        if (used.labels.length) updateLast((m) => ({ ...m, tools: used.labels }))
+      }
       const context = contexts.join('\n\n') || undefined
       const { tokensPerSecond } = await generateReply(
         history,
-        { reply, context, instructions, memory: replySettings.memory === 'on' ? memory : [] },
+        { reply, context, instructions, memory: replySettings.memory === 'on' ? memory : [], toolFacts },
         (piece) => {
           replyText += piece
           updateLast((m) => ({ ...m, content: m.content + piece }))
@@ -593,6 +605,9 @@ export default function ChatView(props: ChatViewProps) {
                 {m.remembered && <div className="sources">Saved to memory. Manage it on the start page.</div>}
                 {m.role === 'assistant' && !m.error && m.sources?.length ? (
                   <div className="sources">Sources: {m.sources.map((s, n) => `[${n + 1}] ${s}`).join(' · ')}</div>
+                ) : null}
+                {m.role === 'assistant' && !m.error && m.tools?.length ? (
+                  <div className="sources">Tools: {m.tools.join(' · ')}</div>
                 ) : null}
               </div>
             ))

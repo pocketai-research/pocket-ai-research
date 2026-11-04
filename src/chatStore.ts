@@ -9,6 +9,8 @@ export interface ChatEntry extends ChatMessage {
   error?: boolean
   /** Document passages the reply was based on, e.g. "report.pdf p. 3". */
   sources?: string[]
+  /** Tools the app ran for the reply, e.g. "calculator: 17 × 23 × 4 = 1,564" (src/ai/tools.ts). */
+  tools?: string[]
   /** A user message sent with a translation template: the reply's language, whatever the settings say. */
   replyLanguage?: ReplySettings['language']
   /** A user message whose fact was saved to memory ("Remember that…"). */

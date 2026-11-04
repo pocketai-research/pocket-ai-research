@@ -10,6 +10,7 @@ import {
 import wasmUrl from '@wllama/wllama/esm/wasm/wllama.wasm?url'
 import { hasWebGPU } from '../deviceCheck'
 import { clearBusy, markBusy, type EngineSettings, type ReplySettings } from '../settings'
+import { todayLine } from './dates'
 import type { ModelOption } from './models'
 
 export interface ChatMessage {
@@ -181,6 +182,11 @@ export interface ReplyOptions {
   instructions?: string
   /** Facts the user asked the AI to remember (src/memory.ts). */
   memory?: string[]
+  /**
+   * Results of the app's tools (src/ai/tools.ts), sent with the question rather than in the
+   * system prompt: there Gemma 3 1B wrote its own wrong sum next to the calculator's right one.
+   */
+  toolFacts?: string
 }
 
 function systemPrompt({ reply, context, instructions, memory }: ReplyOptions) {
@@ -191,11 +197,14 @@ function systemPrompt({ reply, context, instructions, memory }: ReplyOptions) {
           'Kamu adalah asisten Pocket Ai Research, AI yang membantu dan berjalan offline di perangkat pengguna.',
           'Selalu jawab dalam Bahasa Indonesia, walaupun pertanyaannya dalam bahasa lain.',
           LENGTHS[reply.length].rule,
+          // Models do not know the date; without it "what day is it?" gets a guess.
+          todayLine(true),
         ].join(' ')
       : [
           "You are the Pocket Ai Research assistant, a helpful AI that runs offline on the user's device.",
           LANGUAGE_RULES[reply.language],
           LENGTHS[reply.length].rule,
+          todayLine(false),
         ].join(' ')
   const own = instructions?.trim()
   const label = reply.language === 'indonesian' ? 'Instruksi dari pengguna untuk chat ini' : "The user's instructions for this chat"
@@ -304,12 +313,17 @@ async function streamReply(
   const maxTokens = think
     ? Math.floor(contextSize / 2)
     : Math.min(LENGTHS[options.reply.length].maxTokens, Math.floor(contextSize / 2))
-  const recent = fitHistory(history, contextSize - maxTokens - estimateTokens(system) - 64)
-  // Small models follow the language of the last message over the system prompt, so a fixed
-  // reply language is repeated there too (sent to the model only, never shown).
+  const toolFacts = options.toolFacts ?? ''
+  const recent = fitHistory(history, contextSize - maxTokens - estimateTokens(system) - estimateTokens(toolFacts) - 64)
+  // Small models follow the last message over the system prompt, so the tools' results and a
+  // fixed reply language go there too (sent to the model only, never shown).
   const last = recent.at(-1)
-  if (last?.role === 'user' && options.reply.language !== 'auto') {
-    recent[recent.length - 1] = { ...last, content: `${last.content}\n\n(${LANGUAGE_RULES[options.reply.language]})` }
+  if (last?.role === 'user') {
+    const extra = [
+      toolFacts && `[${toolFacts}]`,
+      options.reply.language !== 'auto' && `(${LANGUAGE_RULES[options.reply.language]})`,
+    ].filter(Boolean)
+    if (extra.length) recent[recent.length - 1] = { ...last, content: [last.content, ...extra].join('\n\n') }
   }
   const vision = model.vision
   const messages: ChatCompletionMessage[] = [

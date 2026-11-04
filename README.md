@@ -51,6 +51,16 @@ The Light and Balanced models were chosen by comparing answers to Indonesian tas
 
 **Memory:** say "Remember that…" or "Ingat bahwa…" in a chat (or add a fact under **Memory** on the start page) and the AI knows it in every chat from then on, such as your name, your job or how you like answers. Facts are only saved when you ask, never guessed from conversations; they stay on the device (up to 30), are added to the system prompt, and can be forgotten one by one or switched off ([src/memory.ts](src/memory.ts)).
 
+**Tools:** before it answers, the app works out what small models get wrong and gives the results to the AI ([src/ai/tools.ts](src/ai/tools.ts)):
+
+- **Calculator:** a sum such as "Berapa 17 x 23 x 4?" or "15% dari 200.000" is calculated directly, for every model. For a word problem, the Smart model writes the calculation as JSON held to a grammar, and the app works it out. On four test problems Qwen3 1.7B wrote all four calculations right, while Qwen3 0.6B and Gemma 3 1B got one each, so the smaller models answer word problems on their own: a wrong calculation passed on as exact would be worse than none.
+- **Dates:** today's date is in every prompt. Dates in a question ("17 Agustus 2027", "besok", "in 30 days") get their weekday and how many days they are from today.
+- **Nearby places:** "rumah sakit terdekat?" uses your location and the map's place search, offline when you are inside a downloaded area.
+
+The results are sent with the question, where small models follow them best; in the system prompt, Gemma 3 1B wrote its own wrong sum next to the calculator's right one. What was used is shown under the reply, e.g. "Tools: calculator: 3 × 12500 × 0.9 = 33,750". Tools can be turned off under **AI replies**.
+
+llama.cpp's own tool calling was measured first and left out. The tool descriptions it adds to every prompt made the first word of a reply take 25–35 s instead of 3–5 s with Qwen3 0.6B on a laptop (73–98 s instead of 11–14 s with Qwen3 1.7B), and Gemma 3 does not call tools.
+
 **Saved chats** can be searched: type in the box at the top of the chat list and it keeps the chats whose title or messages contain the words, with the matching part of a message shown under the title.
 
 **Backup:** **Export backup** on the start page saves your chats (with their photos), documents, notes, memory, saved places and trips in one JSON file (a download on the web, the share sheet in the Android app), and **Import backup** adds such a file to another phone or browser ([src/backup.ts](src/backup.ts)). An item that is already there is replaced by the backup's copy, and memory facts already known are not repeated. Models and offline maps are not included (download them again), nor are the vectors for search by meaning, which are rebuilt after an import when that search is on.

@@ -55,6 +55,8 @@ export interface ReplySettings {
   docSearch: 'words' | 'meaning'
   /** Add the facts the user saved (src/memory.ts) to every chat. */
   memory: 'on' | 'off'
+  /** Work out sums, dates and nearby places for the AI before it answers (src/ai/tools.ts). */
+  tools: 'on' | 'off'
 }
 
 const REPLY_KEY = 'pocket-ai:replies'
@@ -66,6 +68,7 @@ const DEFAULT_REPLY_SETTINGS: ReplySettings = {
   think: false,
   docSearch: 'words',
   memory: 'on',
+  tools: 'on',
 }
 
 export function readReplySettings(): ReplySettings {

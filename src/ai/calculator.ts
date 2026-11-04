@@ -108,35 +108,27 @@ export function evaluate(expression: string): number {
   return value
 }
 
-/**
- * Numbers as written in Indonesian or English to plain digits: 12.500 and 12,500 become 12500;
- * 1,5 and 1.5 become 1.5. A separator followed by exactly three digits groups thousands.
- */
-export function plainNumbers(text: string) {
-  return text
-    .replace(/\d{1,3}(?:\.\d{3})+(?:,\d+)?(?![\d.])/g, (n) => n.replace(/\./g, '').replace(',', '.'))
-    .replace(/\d{1,3}(?:,\d{3})+(?:\.\d+)?(?![\d,])/g, (n) => n.replace(/,/g, ''))
-    .replace(/(\d),(\d)/g, '$1.$2')
-}
+/** Numbers with thousand separators to plain digits: 12,500 and 1,234.56 become 12500 and 1234.56. */
+export const plainNumbers = (text: string) =>
+  text.replace(/\d{1,3}(?:,\d{3})+(?:\.\d+)?(?![\d,])/g, (n) => n.replace(/,/g, ''))
 
 const WORD_OPERATORS: [RegExp, string][] = [
-  [/\b(akar kuadrat dari|akar kuadrat|akar dari|akar|square root of|square root|sqrt)\s*\(?\s*([\d.]+)\s*\)?/g, 'sqrt($2)'],
-  [/\b(dikalikan dengan|dikalikan|dikali|kali|times|multiplied by)\b|[x×]/g, '*'],
-  [/\b(dibagi dengan|dibagi|bagi|divided by)\b|[÷:]/g, '/'],
-  [/\b(ditambah dengan|ditambah|tambah|plus)\b/g, '+'],
-  [/\b(dikurangi dengan|dikurangi|kurang|minus)\b/g, '-'],
-  [/\b(pangkat|to the power of)\b/g, '^'],
-  [/\b(kuadrat|squared)\b/g, '^2'],
-  [/\b(persen|percent)\b/g, '%'],
-  [/%\s*(dari|of)\b/g, '% *'],
+  [/\b(square root of|square root|sqrt)\s*\(?\s*([\d.]+)\s*\)?/g, 'sqrt($2)'],
+  [/\b(times|multiplied by)\b|[x×]/g, '*'],
+  [/\b(divided by)\b|[÷:]/g, '/'],
+  [/\b(plus|added to)\b/g, '+'],
+  [/\b(minus)\b/g, '-'],
+  [/\b(to the power of)\b/g, '^'],
+  [/\b(squared)\b/g, '^2'],
+  [/\b(percent)\b/g, '%'],
+  [/%\s*of\b/g, '% *'],
 ]
 
-const FILLER =
-  /\b(berapakah|berapa|hasilnya|hasil|hitunglah|hitung|tolong|coba|adalah|sama dengan|what is|what's|whats|how much is|calculate|compute|equals|is)\b|[?=!]/g
+const FILLER = /\b(what is|what's|whats|how much is|calculate|compute|work out|equals|is|please)\b|[?=!]/g
 
 /**
- * The arithmetic in a question that is only a sum, such as "Berapa 17 x 23 x 4?" or "15% dari
- * 200.000", ready to evaluate; null when the question is about more than that.
+ * The arithmetic in a question that is only a sum, such as "What is 17 x 23 x 4?" or "15% of
+ * 200,000", ready to evaluate; null when the question is about more than that.
  */
 export function expressionIn(question: string): string | null {
   let text = plainNumbers(question.toLowerCase())
@@ -152,9 +144,8 @@ export function expressionIn(question: string): string | null {
   }
 }
 
-/** A result for people and the AI: 33750 as 33,750 (English) or 33.750 (Indonesian). */
-export const formatNumber = (value: number, indonesian: boolean) =>
-  new Intl.NumberFormat(indonesian ? 'id-ID' : 'en-US', { maximumFractionDigits: 6 }).format(value)
+/** A result for people and the AI: 33750 as 33,750. */
+export const formatNumber = (value: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(value)
 
 /** The expression as people write it: 3*12500*0.9 as 3 × 12500 × 0.9. */
 export const prettyExpression = (expression: string) =>

@@ -3,11 +3,9 @@ import { describeError, isAbortError } from './ai/engine'
 import { getDocuments, type DocSummary } from './docs/store'
 import { CloseIcon } from './icons'
 import { makeQuiz, type QuizItem } from './quiz'
-import type { ReplySettings } from './settings'
 
 interface QuizPanelProps {
   documents: DocSummary[]
-  language: ReplySettings['language']
   onClose: () => void
 }
 
@@ -15,7 +13,7 @@ const COUNT = 5
 const LETTERS = ['A', 'B', 'C', 'D']
 
 /** Practice questions from the chat's documents: a multiple-choice quiz, or the same as flashcards. */
-export default function QuizPanel({ documents, language, onClose }: QuizPanelProps) {
+export default function QuizPanel({ documents, onClose }: QuizPanelProps) {
   const [items, setItems] = useState<QuizItem[]>([])
   const [making, setMaking] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -36,7 +34,7 @@ export default function QuizPanel({ documents, language, onClose }: QuizPanelPro
     setError(null)
     restart()
     getDocuments(documents.map((d) => d.id))
-      .then((docs) => makeQuiz(docs, COUNT, language, (item) => setItems((list) => [...list, item]), controller.signal))
+      .then((docs) => makeQuiz(docs, COUNT, (item) => setItems((list) => [...list, item]), controller.signal))
       .catch((err) => {
         if (!isAbortError(err) && !controller.signal.aborted) setError(describeError(err))
       })

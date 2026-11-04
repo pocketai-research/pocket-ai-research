@@ -1,13 +1,12 @@
 import type { DocRecord } from './store'
 
-// Common English and Indonesian words that say nothing about a passage's topic.
+// Common words that say nothing about a passage's topic.
 const STOP_WORDS = new Set(
   (
     'a an the and or but if of to in on at by for with from as is are was were be been being this that these those it its ' +
     'what which who whom when where why how do does did can could should would will shall may might must about into than ' +
     'then there their they them we you your i me my our not no yes so such all any some please tell explain give summary summarize ' +
-    'yang dan atau di ke dari ini itu untuk dengan pada adalah dalam tidak akan juga ada oleh sebagai karena saya aku kami kita ' +
-    'apa bagaimana mengapa kenapa siapa kapan berapa apakah tolong jelaskan sebutkan ringkas ringkasan dokumen bab'
+    'document chapter'
   ).split(' '),
 )
 

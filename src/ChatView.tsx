@@ -31,7 +31,7 @@ import { factToRemember } from './memory'
 import { DETAIL_PHOTO_SIZE, PHOTO_SIZE, photoToDataUrl } from './photo'
 import type { Shared } from './shareTarget'
 import type { ReplySettings } from './settings'
-import { canListen, listen, speak, speechLanguage, stopListening, stopSpeaking } from './voice'
+import { canListen, listen, speak, stopListening, stopSpeaking } from './voice'
 
 interface ChatViewProps {
   loaded: LoadedModel
@@ -78,22 +78,14 @@ const DOCUMENT_SUGGESTIONS = ['Summarise this document.', 'What are the key poin
 interface Template {
   label: string
   prompt: string
-  /** Translations need the reply in their target language, whatever the reply settings say. */
-  language?: ReplySettings['language']
 }
 
 const TEMPLATES: Template[] = [
   { label: 'Summarise', prompt: 'Summarise the following text in a few short bullet points:' },
-  { label: 'Translate to English', prompt: 'Translate the following text into English. Reply with the translation only:', language: 'english' },
-  {
-    label: 'Translate to Indonesian',
-    prompt: 'Translate the following text into Indonesian. Reply with the translation only:',
-    language: 'indonesian',
-  },
+  { label: 'Translate to English', prompt: 'Translate the following text into English. Reply with the translation only:' },
   {
     label: 'Fix grammar',
-    prompt: 'Fix the grammar and spelling of the following text, keeping its language and meaning. Reply with the corrected text only:',
-    language: 'auto',
+    prompt: 'Fix the grammar and spelling of the following text, keeping its meaning. Reply with the corrected text only:',
   },
   { label: 'Write an email', prompt: 'Write a short, polite email about the following:' },
   { label: 'Explain simply', prompt: 'Explain the following simply, as to a beginner:' },
@@ -109,7 +101,7 @@ const INSTRUCTION_PRESETS = [
   'Answer briefly, in two or three sentences.',
   'You are a patient maths teacher. Explain step by step.',
   'Explain things simply, as if to a 12-year-old.',
-  'Always reply in casual Indonesian.',
+  'Use a friendly, casual tone.',
 ]
 
 const toHistory = (entries: ChatEntry[]): ChatMessage[] =>
@@ -177,8 +169,6 @@ export default function ChatView(props: ChatViewProps) {
     const content = text.trim() || (image ? 'Describe this photo.' : '')
     if (!content || generating) return Promise.resolve(null)
     stopSpeaking()
-    // A translation template sets the reply's language, as long as its prompt is still there.
-    const replyLanguage = template?.language && content.startsWith(template.prompt) ? template.language : undefined
     // "Remember that…": saved before the reply, so the reply already knows it.
     const fact = replySettings.memory === 'on' ? factToRemember(content) : null
     if (fact) onRemember(fact)
@@ -187,7 +177,6 @@ export default function ChatView(props: ChatViewProps) {
       content,
       image,
       ...(photo?.detail ? { detail: true } : {}),
-      ...(replyLanguage ? { replyLanguage } : {}),
       ...(fact ? { remembered: true } : {}),
     }
     setMessages((prev) => [...prev, message, { role: 'assistant', content: '' }])
@@ -195,7 +184,7 @@ export default function ChatView(props: ChatViewProps) {
     setPhoto(null)
     setTemplate(null)
     const index = messages.length + 1
-    return streamInto([...toHistory(messages), message], index, replyLanguage).then((reply) => ({ text: reply, index }))
+    return streamInto([...toHistory(messages), message], index).then((reply) => ({ text: reply, index }))
   }
 
   function pickPhoto() {
@@ -252,7 +241,7 @@ export default function ChatView(props: ChatViewProps) {
     setVoiceError(null)
     setListening(true)
     try {
-      const text = await listen(speechLanguage(replySettings.language), setInput)
+      const text = await listen(setInput)
       if (text.trim()) send(text)
       else setInput('')
     } catch (err) {
@@ -276,7 +265,7 @@ export default function ChatView(props: ChatViewProps) {
       setListening(true)
       let heard = ''
       try {
-        heard = (await listen(speechLanguage(replySettings.language), setInput)).trim()
+        heard = (await listen(setInput)).trim()
       } catch (err) {
         setVoiceError(err instanceof Error ? err.message : String(err))
         break
@@ -313,7 +302,7 @@ export default function ChatView(props: ChatViewProps) {
   async function readAloud(text: string, index: number) {
     setSpeakingIndex(index)
     try {
-      await speak(text, replySettings.language)
+      await speak(text)
     } catch (err) {
       setVoiceError(`Could not read the reply aloud: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
@@ -337,7 +326,7 @@ export default function ChatView(props: ChatViewProps) {
     if (lastUser < 0 || generating) return
     stopSpeaking()
     setMessages((prev) => [...prev.slice(0, lastUser + 1), { role: 'assistant', content: '' }])
-    streamInto(toHistory(messages.slice(0, lastUser + 1)), lastUser + 1, messages[lastUser].replyLanguage)
+    streamInto(toHistory(messages.slice(0, lastUser + 1)), lastUser + 1)
   }
 
   async function copyReply(text: string, index: number) {
@@ -358,8 +347,8 @@ export default function ChatView(props: ChatViewProps) {
 
   /** Streams a reply into the empty assistant message at the end of the list (at replyIndex). */
   /** Streams the reply into the last message; resolves to its text ('' when it failed or was stopped). */
-  async function streamInto(history: ChatMessage[], replyIndex: number, language?: ReplySettings['language']): Promise<string> {
-    const reply = language ? { ...replySettings, language } : replySettings
+  async function streamInto(history: ChatMessage[], replyIndex: number): Promise<string> {
+    const reply = replySettings
     let replyText = ''
     let thoughtText = ''
     setGenerating(true)
@@ -400,7 +389,6 @@ export default function ChatView(props: ChatViewProps) {
       let toolFacts: string | undefined
       if (replySettings.tools === 'on') {
         const used = await runTools(question, {
-          indonesian: reply.language === 'indonesian',
           planCalculations: Boolean(loaded.model.plansCalculations),
           signal: controller.signal,
         })
@@ -498,7 +486,7 @@ export default function ChatView(props: ChatViewProps) {
       </header>
 
       {quizOpen && (
-        <QuizPanel documents={documents} language={replySettings.language} onClose={() => setQuizOpen(false)} />
+        <QuizPanel documents={documents} onClose={() => setQuizOpen(false)} />
       )}
 
       {historyOpen && (

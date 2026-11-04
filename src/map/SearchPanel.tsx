@@ -43,7 +43,7 @@ export interface SearchRequest {
   ai: boolean
 }
 
-const EXAMPLES = ['Nearest hospital', 'Masjid terdekat', 'Rute ke SPBU terdekat', 'ATM near me']
+const EXAMPLES = ['Nearest hospital', 'Nearest pharmacy', 'Route to the nearest petrol station', 'ATM near me']
 
 interface Results {
   title: string

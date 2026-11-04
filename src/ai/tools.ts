@@ -23,7 +23,6 @@ export interface ToolResults {
 }
 
 export interface ToolOptions {
-  indonesian: boolean
   /** Let the model write the calculation for a word problem (the Smart model). */
   planCalculations: boolean
   signal: AbortSignal
@@ -31,19 +30,17 @@ export interface ToolOptions {
 
 // A calculation is likely: a word that asks for one, and at least two numbers.
 const MATH_WORDS =
-  /\b(berapa|total|jumlah|hitung|harga|diskon|potongan|kembalian|bayar|sisa|rata|persen|bunga|cicilan|kali|bagi|tambah|kurang|selisih|untung|rugi|how much|how many|sum|price|discount|percent|cost|change|average|each|per|interest|left|difference|profit)\b|%/
-// "Nearest hospital", "ATM terdekat": a question about places around the user.
-const NEAR_WORDS =
-  /\b(terdekat|nearest|closest|near me|nearby|dekat sini|dekat saya|dekat rumah|di dekat|sekitar sini|di sekitar|around here)\b/
+  /\b(how much|how many|total|sum|price|discount|percent|cost|pay|change|average|each|per|interest|left|remaining|difference|profit|split)\b|%/
+// "Nearest hospital", "ATM near me": a question about places around the user.
+const NEAR_WORDS = /\b(nearest|closest|near me|nearby|near here|around here|close by)\b/
 
 /** Runs the tools a question needs; any that fails is left out rather than stopping the reply. */
 export async function runTools(question: string, options: ToolOptions): Promise<ToolResults> {
-  const { indonesian } = options
   const lower = question.toLowerCase()
   const facts: string[] = []
   const labels: string[] = []
 
-  const dates = dateFacts(question, indonesian)
+  const dates = dateFacts(question)
   facts.push(...dates.facts)
   labels.push(...dates.labels.map((label) => `date: ${label}`))
 
@@ -70,11 +67,10 @@ export async function runTools(question: string, options: ToolOptions): Promise<
   }
 
   if (!facts.length) return { labels }
-  const heading = indonesian ? 'Hasil dari alat aplikasi (tepat, pakai apa adanya):' : "Results from the app's tools (exact, use them as they are):"
-  return { facts: [heading, ...facts].join('\n'), labels }
+  return { facts: ["Results from the app's tools (exact, use them as they are):", ...facts].join('\n'), labels }
 }
 
-async function calculate(question: string, { indonesian, planCalculations, signal }: ToolOptions) {
+async function calculate(question: string, { planCalculations, signal }: ToolOptions) {
   // A question that is only a sum ("17 x 23 x 4") needs no model at all.
   let expression = expressionIn(question)
   if (!expression) {
@@ -89,7 +85,7 @@ async function calculate(question: string, { indonesian, planCalculations, signa
         '',
         'Write one arithmetic expression whose value is the answer. Use every number the question needs, and only numbers, + - * / ( ).',
         'Example: 4 items at 2500 each with 20% off is 4 * 2500 * 0.8. Example: 30% of 900 spent, what is left, is 900 * 0.7.',
-        'Write numbers without thousand separators (12500, not 12.500).',
+        'Write numbers without thousand separators (12500, not 12,500).',
       ].join('\n'),
       { type: 'object', properties: { expression: { type: 'string' } }, required: ['expression'] },
       signal,
@@ -99,13 +95,8 @@ async function calculate(question: string, { indonesian, planCalculations, signa
     expression = plan.expression.replace(/[x×]/g, '*').replace(/÷/g, '/')
   }
   const value = evaluate(expression)
-  const shown = `${prettyExpression(expression)} = ${formatNumber(value, indonesian)}`
-  return {
-    fact: indonesian
-      ? `Kalkulator: ${shown}. Gunakan angka ini; jangan menghitung ulang.`
-      : `Calculator: ${shown}. Use this number; do not work it out again.`,
-    label: `calculator: ${prettyExpression(expression)} = ${formatNumber(value, false)}`,
-  }
+  const shown = `${prettyExpression(expression)} = ${formatNumber(value)}`
+  return { fact: `Calculator: ${shown}. Use this number; do not work it out again.`, label: `calculator: ${shown}` }
 }
 
 function currentPosition(): Promise<[number, number]> {
@@ -144,7 +135,8 @@ async function findNearby(query: PlaceQuery) {
   }
   const { places, radius } = await searchPlaces(query, point, area)
   return {
-    fact: placesContext(query, places, 'the user'),
+    // The same words as the map's own search, so a reply that repeats them reads naturally.
+    fact: placesContext(query, places, 'your location'),
     label: places.length
       ? `map: ${places.length} ${what} within ${radius / 1000} km${area ? ` (offline area ${area.name})` : ''}`
       : `map: no ${what} within ${radius / 1000} km`,

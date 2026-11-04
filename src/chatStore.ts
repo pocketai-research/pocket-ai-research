@@ -1,6 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import type { ChatMessage } from './ai/engine'
-import type { ReplySettings } from './settings'
 
 export interface ChatEntry extends ChatMessage {
   /** What a thinking model worked through before its answer (Think first). */
@@ -11,8 +10,6 @@ export interface ChatEntry extends ChatMessage {
   sources?: string[]
   /** Tools the app ran for the reply, e.g. "calculator: 17 × 23 × 4 = 1,564" (src/ai/tools.ts). */
   tools?: string[]
-  /** A user message sent with a translation template: the reply's language, whatever the settings say. */
-  replyLanguage?: ReplySettings['language']
   /** A user message whose fact was saved to memory ("Remember that…"). */
   remembered?: boolean
 }

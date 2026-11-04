@@ -21,69 +21,69 @@ interface Category {
   label: string
   /** OpenMapTiles POI class or subclass values. */
   kinds: string[]
-  /** Words in English or Indonesian that ask for this category. */
+  /** Words that ask for this category. */
   words: string[]
-  /** Also match places of worship whose religion is not tagged but whose name contains one of these. */
+  /**
+   * Also match places of worship whose religion is not tagged but whose name contains one of
+   * these. They are words in the map data's place names (OpenStreetMap names places in the local
+   * language, e.g. "Masjid Agung"), not words the app understands in questions.
+   */
   names?: string[]
   /** Kinds listed first, before closer matches of other kinds (real hospitals before clinics). */
   prefer?: string[]
 }
 
 const CATEGORIES: Category[] = [
-  { label: 'hospitals', kinds: ['hospital', 'clinic', 'doctors'], prefer: ['hospital'], words: ['hospital', 'rumah sakit', 'rs', 'rsud'] },
-  { label: 'clinics', kinds: ['clinic', 'doctors', 'hospital'], prefer: ['clinic', 'doctors'], words: ['clinic', 'doctor', 'klinik', 'puskesmas', 'dokter', 'posyandu'] },
-  { label: 'pharmacies', kinds: ['pharmacy', 'chemist'], words: ['pharmacy', 'drugstore', 'apotek', 'apotik', 'obat'] },
+  { label: 'hospitals', kinds: ['hospital', 'clinic', 'doctors'], prefer: ['hospital'], words: ['hospital', 'emergency room'] },
+  { label: 'clinics', kinds: ['clinic', 'doctors', 'hospital'], prefer: ['clinic', 'doctors'], words: ['clinic', 'doctor', 'health centre', 'health center'] },
+  { label: 'pharmacies', kinds: ['pharmacy', 'chemist'], words: ['pharmacy', 'drugstore', 'chemist', 'medicine'] },
   // For places of worship OpenMapTiles puts the religion in the subclass.
-  { label: 'mosques', kinds: ['muslim'], names: ['masjid', 'mosque', 'musholla', 'mushola', 'musala', 'langgar'], words: ['mosque', 'masjid', 'musholla', 'mushola', 'musala'] },
-  { label: 'churches', kinds: ['christian'], names: ['gereja', 'church', 'katedral', 'cathedral'], words: ['church', 'gereja'] },
-  { label: 'temples', kinds: ['hindu', 'buddhist', 'taoist', 'confucian'], names: ['pura', 'vihara', 'klenteng', 'temple'], words: ['temple', 'pura', 'vihara', 'klenteng'] },
-  { label: 'places of worship', kinds: ['place_of_worship'], words: ['worship', 'ibadah'] },
-  { label: 'petrol stations', kinds: ['fuel'], words: ['petrol', 'gas station', 'fuel', 'spbu', 'pom bensin', 'bensin', 'pertamina'] },
+  { label: 'mosques', kinds: ['muslim'], names: ['masjid', 'mosque', 'musholla', 'mushola', 'musala', 'langgar'], words: ['mosque', 'prayer room'] },
+  { label: 'churches', kinds: ['christian'], names: ['gereja', 'church', 'katedral', 'cathedral'], words: ['church', 'cathedral'] },
+  { label: 'temples', kinds: ['hindu', 'buddhist', 'taoist', 'confucian'], names: ['pura', 'vihara', 'klenteng', 'temple'], words: ['temple'] },
+  { label: 'places of worship', kinds: ['place_of_worship'], words: ['worship', 'place of worship'] },
+  { label: 'petrol stations', kinds: ['fuel'], words: ['petrol', 'petrol station', 'gas station', 'fuel', 'gas'] },
   { label: 'ATMs and banks', kinds: ['atm', 'bank'], words: ['atm', 'bank', 'cash'] },
-  { label: 'places to eat', kinds: ['restaurant', 'fast_food', 'food_court', 'cafe'], words: ['restaurant', 'food', 'eat', 'lunch', 'dinner', 'makan', 'restoran', 'rumah makan', 'warung', 'kuliner'] },
-  { label: 'cafes', kinds: ['cafe'], words: ['cafe', 'coffee', 'kopi', 'kafe'] },
-  { label: 'schools and universities', kinds: ['school', 'kindergarten', 'college', 'university'], words: ['school', 'university', 'college', 'campus', 'sekolah', 'universitas', 'kampus', 'sd', 'smp', 'sma', 'smk'] },
-  { label: 'hotels', kinds: ['lodging', 'hotel', 'hostel', 'motel', 'guest_house'], words: ['hotel', 'hostel', 'stay', 'penginapan', 'losmen', 'homestay', 'guest house'] },
-  { label: 'shops and markets', kinds: ['grocery', 'supermarket', 'convenience', 'marketplace', 'mall'], words: ['supermarket', 'minimarket', 'market', 'shop', 'store', 'mall', 'pasar', 'toko', 'indomaret', 'alfamart', 'belanja'] },
+  { label: 'places to eat', kinds: ['restaurant', 'fast_food', 'food_court', 'cafe'], words: ['restaurant', 'food', 'eat', 'lunch', 'dinner', 'breakfast'] },
+  { label: 'cafes', kinds: ['cafe'], words: ['cafe', 'coffee', 'coffee shop'] },
+  { label: 'schools and universities', kinds: ['school', 'kindergarten', 'college', 'university'], words: ['school', 'university', 'college', 'campus', 'kindergarten'] },
+  { label: 'hotels', kinds: ['lodging', 'hotel', 'hostel', 'motel', 'guest_house'], words: ['hotel', 'hostel', 'stay', 'motel', 'homestay', 'guest house'] },
+  { label: 'shops and markets', kinds: ['grocery', 'supermarket', 'convenience', 'marketplace', 'mall'], words: ['supermarket', 'minimarket', 'market', 'shop', 'store', 'mall', 'grocery', 'shopping'] },
   // "police station" must outrank the bus and train stops' "station" (the longest match wins).
-  { label: 'police stations', kinds: ['police'], words: ['police station', 'police', 'kantor polisi', 'polisi', 'polsek', 'polres'] },
-  { label: 'fire stations', kinds: ['fire_station'], words: ['fire station', 'fire brigade', 'pemadam', 'pemadam kebakaran', 'damkar'] },
-  { label: 'bus and train stops', kinds: ['bus', 'bus_stop', 'bus_station', 'railway', 'station', 'halt'], words: ['bus', 'train', 'station', 'halte', 'stasiun', 'terminal', 'kereta'] },
-  { label: 'toilets', kinds: ['toilets'], words: ['toilet', 'restroom', 'wc', 'kamar mandi'] },
-  { label: 'parking', kinds: ['parking'], words: ['parking', 'parkir'] },
-  { label: 'parks', kinds: ['park'], words: ['park', 'taman'] },
-  { label: 'post offices', kinds: ['post', 'post_office'], words: ['post office', 'kantor pos'] },
+  { label: 'police stations', kinds: ['police'], words: ['police station', 'police'] },
+  { label: 'fire stations', kinds: ['fire_station'], words: ['fire station', 'fire brigade', 'fire department'] },
+  { label: 'bus and train stops', kinds: ['bus', 'bus_stop', 'bus_station', 'railway', 'station', 'halt'], words: ['bus', 'bus stop', 'train', 'station', 'terminal'] },
+  { label: 'toilets', kinds: ['toilets'], words: ['toilet', 'restroom', 'bathroom', 'wc'] },
+  { label: 'parking', kinds: ['parking'], words: ['parking', 'car park'] },
+  { label: 'parks', kinds: ['park'], words: ['park'] },
+  { label: 'post offices', kinds: ['post', 'post_office'], words: ['post office'] },
 ]
 
-const STOP_WORDS = new Set(
-  'where is are the a an near nearest closest me here around any find show what which how to of in di mana dimana yang terdekat dekat sini sekitar ada cari carikan tunjukkan apa ke dari saya aku'.split(' '),
-)
+const STOP_WORDS = new Set('where is are the a an near nearest closest me here around any find show what which how to of in'.split(' '))
 
 export interface PlaceQuery {
   category: Category | null
   /** Words to match in place names when no category was recognised. */
   text: string
-  /** Asks the way there ("route to…", "rute ke…"): show directions to the first place found. */
+  /** Asks the way there ("route to…", "directions to…"): show directions to the first place found. */
   route: boolean
-  /** "walk", "jalan kaki": directions on foot. */
+  /** "walk", "on foot": directions on foot. */
   walk: boolean
 }
 
 // Longest first, so "how do i get to" is removed whole.
 const ROUTE_PHRASES = [
-  'jalan kaki menuju', 'jalan kaki ke', 'walking to', 'how do i get to', 'how can i get to', 'how to get to', 'how to go to', 'directions to', 'direction to',
-  'take me to', 'navigate to', 'route to', 'walk to', 'way to', 'go to',
-  'bagaimana cara ke', 'cara pergi ke', 'cara menuju', 'jalan menuju', 'rute menuju', 'arah menuju',
-  'rute ke', 'arah ke', 'jalan ke', 'cara ke', 'pergi ke', 'antar ke', 'menuju ke', 'menuju', 'rute', 'directions',
+  'walking to', 'how do i get to', 'how can i get to', 'how to get to', 'how to go to', 'directions to', 'direction to',
+  'take me to', 'navigate to', 'route to', 'walk to', 'way to', 'go to', 'directions',
 ]
-const WALK_WORDS = ['jalan kaki', 'on foot', 'walking', 'walk']
+const WALK_WORDS = ['on foot', 'walking', 'walk']
 
 export function parseQuery(input: string): PlaceQuery {
   let lower = ` ${input.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ')} `
   const walk = WALK_WORDS.some((w) => lower.includes(` ${w} `))
   const route = ROUTE_PHRASES.some((phrase) => lower.includes(` ${phrase} `))
   for (const phrase of [...ROUTE_PHRASES, ...WALK_WORDS]) lower = lower.replaceAll(` ${phrase} `, ' ')
-  // Longest phrase first, so "rumah sakit" wins over shorter words.
+  // Longest phrase first, so "police station" wins over "station".
   const matches = CATEGORIES.flatMap((category) => category.words.map((word) => ({ category, word })))
     .filter(({ word }) => lower.includes(` ${word} `))
     .sort((a, b) => b.word.length - a.word.length)

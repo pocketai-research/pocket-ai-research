@@ -44,7 +44,6 @@ export function readEngineSettings(): EngineSettings {
 export const saveEngineSettings = (settings: EngineSettings) => write(SETTINGS_KEY, JSON.stringify(settings))
 
 export interface ReplySettings {
-  language: 'english' | 'indonesian' | 'auto'
   length: 'short' | 'normal' | 'detailed'
   creativity: 'precise' | 'balanced' | 'creative'
   /** Read each reply aloud with the device's voice when it is finished. */
@@ -61,7 +60,6 @@ export interface ReplySettings {
 
 const REPLY_KEY = 'pocket-ai:replies'
 const DEFAULT_REPLY_SETTINGS: ReplySettings = {
-  language: 'english',
   length: 'normal',
   creativity: 'balanced',
   readAloud: 'off',
@@ -73,7 +71,9 @@ const DEFAULT_REPLY_SETTINGS: ReplySettings = {
 
 export function readReplySettings(): ReplySettings {
   try {
-    return { ...DEFAULT_REPLY_SETTINGS, ...JSON.parse(read(REPLY_KEY) ?? '{}') }
+    // Versions before 0.32 also had a reply language; the app now always replies in English.
+    const { language: _, ...saved } = JSON.parse(read(REPLY_KEY) ?? '{}')
+    return { ...DEFAULT_REPLY_SETTINGS, ...saved }
   } catch {
     return DEFAULT_REPLY_SETTINGS
   }

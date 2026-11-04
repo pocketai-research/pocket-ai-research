@@ -49,7 +49,7 @@ export function routeContext(route: Route, place: Place, originLabel: string) {
     'Steps:',
     ...route.steps.map((step, i) => `${i + 1}. ${step.text}${step.distance ? ` (${formatDistance(step.distance)})` : ''}`),
     `The destination is ${place.name}. Street and place names are only those written in these steps; ` +
-      'words from the question (such as "jalan kaki", on foot, or "terdekat", nearest) are not names.',
+      'words from the question (such as "on foot" or "nearest") are not names.',
     'Explain the way there in a few short sentences, using only these steps. Never invent roads, landmarks or turns.',
   ].join('\n')
 }

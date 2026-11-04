@@ -31,12 +31,8 @@ export interface LoadedModel {
   vision: boolean
 }
 
-// Written in the target language: small models follow that far better than an English rule.
-const LANGUAGE_RULES: Record<ReplySettings['language'], string> = {
-  english: 'Reply in English.',
-  indonesian: 'Jawab dalam Bahasa Indonesia.',
-  auto: "Reply in the same language as the user's last message.",
-}
+// The app is in English, and so are its replies, whatever language a message is written in.
+const LANGUAGE_RULE = 'Reply in English.'
 
 const LENGTHS: Record<ReplySettings['length'], { rule: string; maxTokens: number }> = {
   short: { rule: 'Keep replies brief: a few sentences at most.', maxTokens: 256 },
@@ -190,31 +186,17 @@ export interface ReplyOptions {
 }
 
 function systemPrompt({ reply, context, instructions, memory }: ReplyOptions) {
-  // For Indonesian the whole prompt is Indonesian; an English prompt pulls small models to English.
-  const base =
-    reply.language === 'indonesian'
-      ? [
-          'Kamu adalah asisten Pocket Ai Research, AI yang membantu dan berjalan offline di perangkat pengguna.',
-          'Selalu jawab dalam Bahasa Indonesia, walaupun pertanyaannya dalam bahasa lain.',
-          LENGTHS[reply.length].rule,
-          // Models do not know the date; without it "what day is it?" gets a guess.
-          todayLine(true),
-        ].join(' ')
-      : [
-          "You are the Pocket Ai Research assistant, a helpful AI that runs offline on the user's device.",
-          LANGUAGE_RULES[reply.language],
-          LENGTHS[reply.length].rule,
-          todayLine(false),
-        ].join(' ')
+  const base = [
+    "You are the Pocket Ai Research assistant, a helpful AI that runs offline on the user's device.",
+    LANGUAGE_RULE,
+    LENGTHS[reply.length].rule,
+    // Models do not know the date; without it "what day is it?" gets a guess.
+    todayLine(),
+  ].join(' ')
   const own = instructions?.trim()
-  const label = reply.language === 'indonesian' ? 'Instruksi dari pengguna untuk chat ini' : "The user's instructions for this chat"
-  let rules = own ? `${base}\n\n${label}: ${own}` : base
+  let rules = own ? `${base}\n\nThe user's instructions for this chat: ${own}` : base
   if (memory?.length) {
-    const heading =
-      reply.language === 'indonesian'
-        ? 'Yang kamu ketahui tentang pengguna (ia memintamu mengingatnya):'
-        : 'What you know about the user (they asked you to remember it):'
-    rules += `\n\n${heading}\n${memory.map((fact) => `- ${fact}`).join('\n')}`
+    rules += `\n\nWhat you know about the user (they asked you to remember it):\n${memory.map((fact) => `- ${fact}`).join('\n')}`
   }
   return context ? `${rules}\n\n${context}` : rules
 }
@@ -262,7 +244,7 @@ export async function generateJson<T>(system: string, prompt: string, schema: ob
   }
 }
 
-// Rough token count (about 3 characters per token, on the safe side for Indonesian text).
+// Rough token count (about 3 characters per token, on the safe side).
 const estimateTokens = (text: string) => Math.ceil(text.length / 3) + 4
 // A photo becomes 256 tokens per 448 px tile once the projector has encoded it (see src/photo.ts).
 const IMAGE_TOKENS = 300
@@ -315,15 +297,12 @@ async function streamReply(
     : Math.min(LENGTHS[options.reply.length].maxTokens, Math.floor(contextSize / 2))
   const toolFacts = options.toolFacts ?? ''
   const recent = fitHistory(history, contextSize - maxTokens - estimateTokens(system) - estimateTokens(toolFacts) - 64)
-  // Small models follow the last message over the system prompt, so the tools' results and a
-  // fixed reply language go there too (sent to the model only, never shown).
+  // Small models follow the last message over the system prompt, so the tools' results and the
+  // reply language go there too (sent to the model only, never shown).
   const last = recent.at(-1)
   if (last?.role === 'user') {
-    const extra = [
-      toolFacts && `[${toolFacts}]`,
-      options.reply.language !== 'auto' && `(${LANGUAGE_RULES[options.reply.language]})`,
-    ].filter(Boolean)
-    if (extra.length) recent[recent.length - 1] = { ...last, content: [last.content, ...extra].join('\n\n') }
+    const extra = [toolFacts && `[${toolFacts}]`, `(${LANGUAGE_RULE})`].filter(Boolean)
+    recent[recent.length - 1] = { ...last, content: [last.content, ...extra].join('\n\n') }
   }
   const vision = model.vision
   const messages: ChatCompletionMessage[] = [

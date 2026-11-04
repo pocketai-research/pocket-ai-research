@@ -2,9 +2,8 @@ import type { Wllama } from '@wllama/wllama/esm/index.js'
 import { createWllama, listDownloadedUrls } from './engine'
 
 /**
- * Search by meaning: a small multilingual embedding model (multilingual E5 small, 100+ languages
- * including Indonesian) turns text into vectors that lie close together when the meaning is close,
- * also across languages. It runs in its own wllama instance beside the chat model. Its transformer
+ * Search by meaning: a small embedding model (multilingual E5 small) turns text into vectors that
+ * lie close together when the meaning is close. It runs in its own wllama instance beside the chat model. Its transformer
  * is small (about 21M parameters besides the vocabulary), so a document indexes quickly on a phone.
  */
 export const EMBEDDING_MODEL = {

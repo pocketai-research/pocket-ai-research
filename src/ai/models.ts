@@ -29,7 +29,7 @@ export interface ModelOption {
 
 // Single-file Q4_K_M GGUFs. In WebAssembly the weights must fit in one allocation, which fails
 // at about 2 GB: Llama 3.2 3B (2.0 GB) downloads but cannot load, so models stay well below that.
-// Chosen by comparing answers to Indonesian tasks (translation, facts, sums, explaining, writing a
+// Chosen by comparing answers to everyday tasks (translation, facts, sums, explaining, writing a
 // message): Qwen3 0.6B beat Qwen2.5 0.5B while being faster, and Gemma 3 1B gave the best answers
 // of all, ahead of Qwen2.5 1.5B.
 export const MODELS: ModelOption[] = [
@@ -51,7 +51,7 @@ export const MODELS: ModelOption[] = [
     name: 'Gemma 3 1B',
     tier: 'Balanced',
     size: '806 MB',
-    description: 'Best Indonesian and the most natural writing. A little slower than Light.',
+    description: 'The best answers and the most natural writing. A little slower than Light.',
     url: 'https://huggingface.co/ggml-org/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf',
     attribution: 'Gemma is provided under and subject to the Gemma Terms of Use (ai.google.dev/gemma/terms).',
     referenceSpeed: 2.8,

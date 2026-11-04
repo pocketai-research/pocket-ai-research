@@ -14,8 +14,6 @@ export type HelpKind = 'hospital' | 'police' | 'fire'
 
 interface EmergencyPanelProps {
   position: Position | null
-  /** Write the shared location message in Indonesian. */
-  indonesian: boolean
   onLocate: () => void
   onFindNearest: (kind: HelpKind) => void
   onClose: () => void
@@ -56,19 +54,16 @@ function useHeading() {
   return heading
 }
 
-function locationMessage(p: Position, indonesian: boolean) {
+function locationMessage(p: Position) {
   const coords = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`
   const link = `https://www.google.com/maps?q=${p.lat.toFixed(5)},${p.lon.toFixed(5)}`
-  const metres = Math.round(p.accuracy)
-  return indonesian
-    ? `Lokasi saya: ${coords} (akurasi sekitar ${metres} m)\n${link}`
-    : `My location: ${coords} (accurate to about ${metres} m)\n${link}`
+  return `My location: ${coords} (accurate to about ${Math.round(p.accuracy)} m)\n${link}`
 }
 
-export default function EmergencyPanel({ position, indonesian, onLocate, onFindNearest, onClose }: EmergencyPanelProps) {
+export default function EmergencyPanel({ position, onLocate, onFindNearest, onClose }: EmergencyPanelProps) {
   const heading = useHeading()
   const [copied, setCopied] = useState(false)
-  const message = position && locationMessage(position, indonesian)
+  const message = position && locationMessage(position)
 
   async function share() {
     if (!message) return

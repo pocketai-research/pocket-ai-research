@@ -1,7 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 import { SpeechRecognition } from '@capacitor-community/speech-recognition'
 import { TextToSpeech } from '@capacitor-community/text-to-speech'
-import type { ReplySettings } from './settings'
 
 const native = Capacitor.isNativePlatform()
 
@@ -23,12 +22,8 @@ const WebSpeech = ((window as unknown as Record<string, unknown>).SpeechRecognit
 
 let webRecognition: WebRecognition | null = null
 
-/** BCP 47 language for speech, from the reply language setting. */
-export function speechLanguage(language: ReplySettings['language']) {
-  if (language === 'indonesian') return 'id-ID'
-  if (language === 'english') return 'en-US'
-  return navigator.language || 'en-US'
-}
+/** The app speaks and listens in English. */
+const SPEECH_LANGUAGE = 'en-US'
 
 export async function canListen(): Promise<boolean> {
   if (!native) return Boolean(WebSpeech)
@@ -44,7 +39,8 @@ export async function canListen(): Promise<boolean> {
  * On the web, onText receives the transcript as it forms. On Android the phone's own speech
  * recogniser is used; it works offline when the language's offline pack is installed.
  */
-export async function listen(language: string, onText: (text: string) => void): Promise<string> {
+export async function listen(onText: (text: string) => void): Promise<string> {
+  const language = SPEECH_LANGUAGE
   if (native) {
     const permission = await SpeechRecognition.requestPermissions()
     if (permission.speechRecognition !== 'granted') throw new Error('Microphone permission was denied.')
@@ -109,18 +105,10 @@ function toSpeech(markdown: string) {
     .trim()
 }
 
-const INDONESIAN_WORDS = /\b(yang|dan|di|untuk|dengan|adalah|ini|itu|tidak|dari|ke|kamu|anda)\b/gi
-
-/** Reading language: the setting, or a guess from the text when it follows the user. */
-function readingLanguage(text: string, language: ReplySettings['language']) {
-  if (language !== 'auto') return speechLanguage(language)
-  return (text.match(INDONESIAN_WORDS)?.length ?? 0) >= 3 ? 'id-ID' : 'en-US'
-}
-
 /** Reads text aloud with the device's voice; resolves when it has finished or was stopped. */
-export async function speak(text: string, language: ReplySettings['language']) {
+export async function speak(text: string) {
   await TextToSpeech.stop().catch(() => {})
-  await TextToSpeech.speak({ text: toSpeech(text), lang: readingLanguage(text, language), rate: 1.0 })
+  await TextToSpeech.speak({ text: toSpeech(text), lang: SPEECH_LANGUAGE, rate: 1.0 })
 }
 
 export function stopSpeaking() {

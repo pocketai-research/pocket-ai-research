@@ -36,15 +36,11 @@ export function withFact(items: MemoryItem[], text: string): MemoryItem[] {
   return [...items, { id: crypto.randomUUID(), text: fact, createdAt: Date.now() }].slice(-MAX_MEMORY)
 }
 
-// "Remember that…", "Please remember: …", "Ingat bahwa…", "Tolong ingat…". A bare "ingat" or
-// "remember" is left alone: "Ingat tidak…?" and "Remember when…?" are questions.
+// "Remember that…", "Please remember: …". A bare "remember" is left alone: "Remember when…?" is a question.
 const REMEMBER = [
   /^(?:please\s+)?remember\s+that\s+(.+)/is,
   /^(?:please\s+)?remember\s*:\s*(.+)/is,
   /^please\s+remember\s+(.+)/is,
-  /^(?:tolong\s+)?ingat(?:lah)?\s+bahwa\s+(.+)/is,
-  /^(?:tolong\s+)?ingat(?:lah)?\s*:\s*(.+)/is,
-  /^tolong\s+ingat(?:lah|kan)?\s+(.+)/is,
 ]
 
 /** The fact in a message that asks the AI to remember something, or null. */

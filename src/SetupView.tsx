@@ -235,23 +235,12 @@ export default function SetupView(props: SetupViewProps) {
         <section className="section">
           <h2>AI replies</h2>
           <p className="section-intro">
-            Changes apply to the next reply. Indonesian replies work best with the Balanced model; the Light model sometimes
-            answers in English anyway. Voice uses the device's own speech services; on Android, speaking to the app
-            works offline once the language's offline speech pack is installed (Settings, Google, Voice). With Tools on,
-            the app works out sums, dates and nearby places exactly and gives the results to the AI; nearby places use your
-            location.
+            Changes apply to the next reply. The AI replies in English. Voice uses the device's own speech services; on
+            Android, speaking to the app works offline once the English offline speech pack is installed (Settings,
+            Google, Voice). With Tools on, the app works out sums, dates and nearby places exactly and gives the results
+            to the AI; nearby places use your location.
           </p>
           <div className="settings">
-            <Choice
-              label="Language"
-              value={replySettings.language}
-              options={[
-                ['english', 'English'],
-                ['indonesian', 'Indonesian'],
-                ['auto', 'Match my message'],
-              ]}
-              onChange={(language) => onReplySettingsChange({ ...replySettings, language })}
-            />
             <Choice
               label="Length"
               value={replySettings.length}
@@ -297,7 +286,7 @@ export default function SetupView(props: SetupViewProps) {
           <h2>Memory</h2>
           <p className="section-intro">
             Facts the AI should know in every chat, such as your name, your job or how you like answers. Say "Remember
-            that…" (or "Ingat bahwa…") in a chat, or add them here. They stay on this device, up to {MAX_MEMORY}.
+            that…" in a chat, or add them here. They stay on this device, up to {MAX_MEMORY}.
           </p>
           <div className="settings">
             <Choice
@@ -436,8 +425,8 @@ export default function SetupView(props: SetupViewProps) {
             />
           </div>
           <p className="muted small">
-            Meaning also finds passages that say the same thing in other words or in another language, e.g. an Indonesian
-            question about an English document. It downloads a {EMBEDDING_MODEL.size} search model once and indexes each
+            Meaning also finds passages that say the same thing in other words, e.g. "car" for a passage about vehicles.
+            It downloads a {EMBEDDING_MODEL.size} search model once and indexes each
             document when it is attached.
           </p>
           {meaningStatus && (

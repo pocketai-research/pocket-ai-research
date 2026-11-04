@@ -359,7 +359,6 @@ export default function MapView({ onBack, ai }: MapViewProps) {
             emergency && (
               <EmergencyPanel
                 position={position}
-                indonesian={ai.reply.language === 'indonesian'}
                 onLocate={locate}
                 onFindNearest={findNearest}
                 onClose={() => setEmergency(false)}

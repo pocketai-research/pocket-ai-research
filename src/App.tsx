@@ -24,6 +24,7 @@ import {
 import SetupView, { type LoadingState } from './SetupView'
 import { embedTexts, prepareEmbeddings } from './ai/embeddings'
 import { extractChunks } from './docs/extract'
+import { readMemory, withFact, writeMemory, type MemoryItem } from './memory'
 import { onShared, type Shared } from './shareTarget'
 import { checkForUpdate, dismissUpdate, type AppUpdate } from './updates'
 import { deleteDocument, getDocuments, listDocuments, saveDocument, summarize, type DocSummary } from './docs/store'
@@ -83,6 +84,12 @@ export default function App() {
   const [meaningStatus, setMeaningStatus] = useState<{ text: string; error?: boolean } | null>(null)
   const [instructions, setInstructions] = useState('')
   const [update, setUpdate] = useState<AppUpdate | null>(null)
+  const [memory, setMemory] = useState<MemoryItem[]>(readMemory)
+
+  function changeMemory(next: MemoryItem[]) {
+    setMemory(next)
+    writeMemory(next)
+  }
   // Text or a photo shared from another app, waiting for the chat to take it.
   const [shared, setShared] = useState<Shared | null>(null)
   // A share opens a new chat, so the last chat must not be restored over it.
@@ -344,6 +351,8 @@ export default function App() {
         instructions={instructions}
         onInstructionsChange={setInstructions}
         banner={banner}
+        memory={memory.map((item) => item.text)}
+        onRemember={(fact) => changeMemory(withFact(readMemory(), fact))}
         incoming={shared}
         onIncomingUsed={() => setShared(null)}
         chatId={chatMeta.id}
@@ -382,6 +391,8 @@ export default function App() {
       onReplySettingsChange={changeReplySettings}
       documents={allDocs}
       meaningStatus={meaningStatus}
+      memory={memory}
+      onMemoryChange={changeMemory}
       onDeleteDocument={removeDocument}
       onOpen={openModel}
       onDelete={removeModel}

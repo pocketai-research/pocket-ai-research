@@ -11,6 +11,8 @@ export interface ChatEntry extends ChatMessage {
   sources?: string[]
   /** A user message sent with a translation template: the reply's language, whatever the settings say. */
   replyLanguage?: ReplySettings['language']
+  /** A user message whose fact was saved to memory ("Remember that…"). */
+  remembered?: boolean
 }
 
 export interface Conversation {

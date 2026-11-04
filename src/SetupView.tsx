@@ -7,6 +7,7 @@ import { engineThreads, estimateSpeed, hasWebGPU, recommendModel, speedScore } f
 import DeviceChecks from './DeviceChecks'
 import type { DocSummary } from './docs/store'
 import { TrashIcon } from './icons'
+import { MAX_FACT_CHARS, MAX_MEMORY, withFact, type MemoryItem } from './memory'
 import type { EngineSettings, ReplySettings } from './settings'
 
 export interface LoadingState {
@@ -30,6 +31,8 @@ interface SetupViewProps {
   documents: DocSummary[]
   /** Progress or a problem while search by meaning is prepared. */
   meaningStatus: { text: string; error?: boolean } | null
+  memory: MemoryItem[]
+  onMemoryChange: (memory: MemoryItem[]) => void
   onDeleteDocument: (doc: DocSummary) => void
   onOpen: (model: ModelOption) => void
   onDelete: (model: ModelOption) => void
@@ -76,7 +79,8 @@ function LoadingProgress({ progress, cached }: { progress: number; cached: boole
 export default function SetupView(props: SetupViewProps) {
   const { models, downloaded, loading, activeId, error, notice, settings, onSettingsChange, onOpen, onDelete } = props
   const { onBackToChat, onShowMap, replySettings, onReplySettingsChange, documents, onDeleteDocument, banner } = props
-  const { meaningStatus } = props
+  const { meaningStatus, memory, onMemoryChange } = props
+  const [newFact, setNewFact] = useState('')
   const [gpuAvailable, setGpuAvailable] = useState(false)
   // Measured after the first paint: the test keeps the CPU busy for about 0.75 s the first time.
   const [score, setScore] = useState<number | null>(null)
@@ -233,6 +237,64 @@ export default function SetupView(props: SetupViewProps) {
               onChange={(readAloud) => onReplySettingsChange({ ...replySettings, readAloud })}
             />
           </div>
+        </section>
+
+        <section className="section">
+          <h2>Memory</h2>
+          <p className="section-intro">
+            Facts the AI should know in every chat, such as your name, your job or how you like answers. Say "Remember
+            that…" (or "Ingat bahwa…") in a chat, or add them here. They stay on this device, up to {MAX_MEMORY}.
+          </p>
+          <div className="settings">
+            <Choice
+              label="Use memory in chats"
+              value={replySettings.memory}
+              options={[
+                ['on', 'On'],
+                ['off', 'Off'],
+              ]}
+              onChange={(value) => onReplySettingsChange({ ...replySettings, memory: value })}
+            />
+          </div>
+          {memory.length === 0 ? (
+            <p className="muted">Nothing saved yet.</p>
+          ) : (
+            <ul className="area-list memory-list">
+              {memory.map((item) => (
+                <li key={item.id}>
+                  <div className="area-info">
+                    <strong>{item.text}</strong>
+                  </div>
+                  <button
+                    className="icon-btn"
+                    aria-label={`Forget: ${item.text}`}
+                    onClick={() => onMemoryChange(memory.filter((m) => m.id !== item.id))}
+                  >
+                    <TrashIcon />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form
+            className="memory-form"
+            onSubmit={(e) => {
+              e.preventDefault()
+              onMemoryChange(withFact(memory, newFact))
+              setNewFact('')
+            }}
+          >
+            <input
+              value={newFact}
+              maxLength={MAX_FACT_CHARS}
+              onChange={(e) => setNewFact(e.target.value)}
+              placeholder="e.g. My name is Budi and I live in Yogyakarta"
+              aria-label="A fact to remember"
+            />
+            <button className="btn primary" type="submit" disabled={!newFact.trim()}>
+              Add
+            </button>
+          </form>
         </section>
 
         <section className="section">

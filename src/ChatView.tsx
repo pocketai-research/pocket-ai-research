@@ -25,6 +25,7 @@ import {
   StopIcon,
 } from './icons'
 import Markdown from './Markdown'
+import { factToRemember } from './memory'
 import { DETAIL_PHOTO_SIZE, PHOTO_SIZE, photoToDataUrl } from './photo'
 import type { Shared } from './shareTarget'
 import type { ReplySettings } from './settings'
@@ -39,6 +40,10 @@ interface ChatViewProps {
   onInstructionsChange: (instructions: string) => void
   /** Shown above the messages, e.g. that a new version of the app is available. */
   banner?: ReactNode
+  /** Facts saved to memory, added to every reply when memory is on. */
+  memory: string[]
+  /** Saves a fact from a "Remember that…" message. */
+  onRemember: (fact: string) => void
   /** Text or a photo shared from another app, to put in the message box. */
   incoming: Shared | null
   onIncomingUsed: () => void
@@ -112,6 +117,7 @@ export default function ChatView(props: ChatViewProps) {
   const { loaded, replySettings, chatId, messages, setMessages, onShowModels, onShowMap, onNewChat, onOpenChat } = props
   const { onDeleteChat, documents, attachStatus, onAttach, onDetach, onUseVisionModel } = props
   const { onReplySettingsChange, instructions, onInstructionsChange, banner, incoming, onIncomingUsed } = props
+  const { memory, onRemember } = props
   const fileRef = useRef<HTMLInputElement>(null)
   const photoRef = useRef<HTMLInputElement>(null)
   // A photo waiting to be sent with the next message (kept with its file so it can be redone in
@@ -166,12 +172,16 @@ export default function ChatView(props: ChatViewProps) {
     stopSpeaking()
     // A translation template sets the reply's language, as long as its prompt is still there.
     const replyLanguage = template?.language && content.startsWith(template.prompt) ? template.language : undefined
+    // "Remember that…": saved before the reply, so the reply already knows it.
+    const fact = replySettings.memory === 'on' ? factToRemember(content) : null
+    if (fact) onRemember(fact)
     const message: ChatEntry = {
       role: 'user',
       content,
       image,
       ...(photo?.detail ? { detail: true } : {}),
       ...(replyLanguage ? { replyLanguage } : {}),
+      ...(fact ? { remembered: true } : {}),
     }
     setMessages((prev) => [...prev, message, { role: 'assistant', content: '' }])
     setInput('')
@@ -316,7 +326,7 @@ export default function ChatView(props: ChatViewProps) {
       }
       const { tokensPerSecond } = await generateReply(
         history,
-        { reply, context, instructions },
+        { reply, context, instructions, memory: replySettings.memory === 'on' ? memory : [] },
         (piece) => {
           replyText += piece
           updateLast((m) => ({ ...m, content: m.content + piece }))
@@ -500,6 +510,7 @@ export default function ChatView(props: ChatViewProps) {
                     )}
                   </div>
                 )}
+                {m.remembered && <div className="sources">Saved to memory. Manage it on the start page.</div>}
                 {m.role === 'assistant' && !m.error && m.sources?.length ? (
                   <div className="sources">Sources: {m.sources.map((s, n) => `[${n + 1}] ${s}`).join(' · ')}</div>
                 ) : null}

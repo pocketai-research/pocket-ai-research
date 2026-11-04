@@ -174,9 +174,11 @@ export interface ReplyOptions {
   context?: string
   /** The user's instructions for this chat, e.g. "You are a maths teacher". */
   instructions?: string
+  /** Facts the user asked the AI to remember (src/memory.ts). */
+  memory?: string[]
 }
 
-function systemPrompt({ reply, context, instructions }: ReplyOptions) {
+function systemPrompt({ reply, context, instructions, memory }: ReplyOptions) {
   // For Indonesian the whole prompt is Indonesian; an English prompt pulls small models to English.
   const base =
     reply.language === 'indonesian'
@@ -192,7 +194,14 @@ function systemPrompt({ reply, context, instructions }: ReplyOptions) {
         ].join(' ')
   const own = instructions?.trim()
   const label = reply.language === 'indonesian' ? 'Instruksi dari pengguna untuk chat ini' : "The user's instructions for this chat"
-  const rules = own ? `${base}\n\n${label}: ${own}` : base
+  let rules = own ? `${base}\n\n${label}: ${own}` : base
+  if (memory?.length) {
+    const heading =
+      reply.language === 'indonesian'
+        ? 'Yang kamu ketahui tentang pengguna (ia memintamu mengingatnya):'
+        : 'What you know about the user (they asked you to remember it):'
+    rules += `\n\n${heading}\n${memory.map((fact) => `- ${fact}`).join('\n')}`
+  }
   return context ? `${rules}\n\n${context}` : rules
 }
 

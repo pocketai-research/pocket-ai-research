@@ -53,6 +53,8 @@ export interface ReplySettings {
   think: boolean
   /** Find document passages by words only, or also by meaning (a 132 MB embedding model). */
   docSearch: 'words' | 'meaning'
+  /** Add the facts the user saved (src/memory.ts) to every chat. */
+  memory: 'on' | 'off'
 }
 
 const REPLY_KEY = 'pocket-ai:replies'
@@ -63,6 +65,7 @@ const DEFAULT_REPLY_SETTINGS: ReplySettings = {
   readAloud: 'off',
   think: false,
   docSearch: 'words',
+  memory: 'on',
 }
 
 export function readReplySettings(): ReplySettings {

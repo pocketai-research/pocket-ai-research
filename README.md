@@ -67,6 +67,7 @@ Looking at a photo is slow on a CPU: about 2 minutes for the first answer on a 4
 
 - **Speak a message:** tap the microphone in the chat box, speak, and pause; the words are sent as a message. In the Android app this uses the phone's own speech recogniser through [@capacitor-community/speech-recognition](https://github.com/capacitor-community/speech-recognition); it works offline once the language's offline speech pack is installed (Settings → Google → Voice). In the browser it uses the Web Speech API, which in Chrome sends audio to Google and needs internet.
 - **Read replies aloud:** tap the speaker under a reply, or turn on **Read replies aloud** under AI replies. It uses the device's voices ([@capacitor-community/text-to-speech](https://github.com/capacitor-community/text-to-speech) on Android, `speechSynthesis` on the web), reads Markdown as plain sentences, and picks Indonesian or English from the reply language setting (or guesses it from the text) ([src/voice.ts](src/voice.ts)).
+- **Voice chat:** tap **Voice chat** above the message box to talk hands-free: the app listens, sends what you said, reads the reply aloud, then listens again, until you tap **Stop voice chat** or say nothing twice in a row.
 
 ## Share to Pocket AI
 

@@ -132,6 +132,9 @@ export default function ChatView(props: ChatViewProps) {
   const [listening, setListening] = useState(false)
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null)
   const [voiceError, setVoiceError] = useState<string | null>(null)
+  // Voice chat: listen, send, read the reply aloud, listen again, until stopped or silent.
+  const [voiceChat, setVoiceChat] = useState(false)
+  const voiceChatRef = useRef(false)
   const [instructionsOpen, setInstructionsOpen] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const [template, setTemplate] = useState<Template | null>(null)
@@ -165,10 +168,11 @@ export default function ChatView(props: ChatViewProps) {
   const updateLast = (patch: (m: ChatEntry) => ChatEntry) =>
     setMessages((prev) => [...prev.slice(0, -1), patch(prev[prev.length - 1])])
 
-  function send(text: string) {
+  /** Sends a message; resolves to the reply and its place in the list (null when nothing was sent). */
+  function send(text: string): Promise<{ text: string; index: number } | null> {
     const image = photo?.url
     const content = text.trim() || (image ? 'Describe this photo.' : '')
-    if (!content || generating) return
+    if (!content || generating) return Promise.resolve(null)
     stopSpeaking()
     // A translation template sets the reply's language, as long as its prompt is still there.
     const replyLanguage = template?.language && content.startsWith(template.prompt) ? template.language : undefined
@@ -187,7 +191,8 @@ export default function ChatView(props: ChatViewProps) {
     setInput('')
     setPhoto(null)
     setTemplate(null)
-    streamInto([...toHistory(messages), message], messages.length + 1, replyLanguage)
+    const index = messages.length + 1
+    return streamInto([...toHistory(messages), message], index, replyLanguage).then((reply) => ({ text: reply, index }))
   }
 
   function pickPhoto() {
@@ -254,6 +259,54 @@ export default function ChatView(props: ChatViewProps) {
     }
   }
 
+  const sendRef = useRef(send)
+  sendRef.current = send
+
+  /** Voice chat: each reply is read aloud, then the microphone opens again. Two silences end it. */
+  async function startVoiceChat() {
+    stopSpeaking()
+    setVoiceError(null)
+    voiceChatRef.current = true
+    setVoiceChat(true)
+    let silences = 0
+    while (voiceChatRef.current) {
+      setListening(true)
+      let heard = ''
+      try {
+        heard = (await listen(speechLanguage(replySettings.language), setInput)).trim()
+      } catch (err) {
+        setVoiceError(err instanceof Error ? err.message : String(err))
+        break
+      } finally {
+        setListening(false)
+      }
+      if (!voiceChatRef.current) break
+      if (!heard) {
+        setInput('')
+        if (++silences >= 2) {
+          setVoiceError('Voice chat stopped: nothing was heard. Tap Voice chat to start again.')
+          break
+        }
+        continue
+      }
+      silences = 0
+      // The newest send: this loop outlives the render it started in, and an older one would
+      // send without the messages added since.
+      const reply = await sendRef.current(heard)
+      if (!voiceChatRef.current || !reply?.text.trim()) break
+      await readAloud(reply.text, reply.index)
+    }
+    voiceChatRef.current = false
+    setVoiceChat(false)
+  }
+
+  function stopVoiceChat() {
+    voiceChatRef.current = false
+    setVoiceChat(false)
+    stopListening()
+    stopSpeaking()
+  }
+
   async function readAloud(text: string, index: number) {
     setSpeakingIndex(index)
     try {
@@ -301,7 +354,8 @@ export default function ChatView(props: ChatViewProps) {
   }
 
   /** Streams a reply into the empty assistant message at the end of the list (at replyIndex). */
-  async function streamInto(history: ChatMessage[], replyIndex: number, language?: ReplySettings['language']) {
+  /** Streams the reply into the last message; resolves to its text ('' when it failed or was stopped). */
+  async function streamInto(history: ChatMessage[], replyIndex: number, language?: ReplySettings['language']): Promise<string> {
     const reply = language ? { ...replySettings, language } : replySettings
     let replyText = ''
     let thoughtText = ''
@@ -343,13 +397,16 @@ export default function ChatView(props: ChatViewProps) {
       } else {
         updateLast((m) => ({ ...m, tokensPerSecond }))
       }
-      if (replySettings.readAloud === 'on' && replyText.trim()) readAloud(replyText, replyIndex)
+      // Voice chat reads its replies itself, then listens again.
+      if (replySettings.readAloud === 'on' && replyText.trim() && !voiceChatRef.current) readAloud(replyText, replyIndex)
+      return replyText
     } catch (err) {
       if (isAbortError(err)) {
         updateLast((m) => (m.content ? m : { ...m, content: 'Stopped.', error: true }))
       } else {
         updateLast((m) => ({ ...m, content: describeError(err), error: true }))
       }
+      return ''
     } finally {
       controllerRef.current = null
       setGenerating(false)
@@ -527,9 +584,14 @@ export default function ChatView(props: ChatViewProps) {
           send(input)
         }}
       >
-        {(listening || voiceError) && (
+        {(listening || voiceError || voiceChat) && (
           <p className={`container voice-status${voiceError ? ' error' : ''}`} role="status">
-            {voiceError ?? 'Listening… speak now, then pause to send.'}
+            {voiceError ??
+              (listening
+                ? 'Listening… speak now, then pause to send.'
+                : generating
+                  ? 'Voice chat: thinking…'
+                  : 'Voice chat: reading the reply…')}
           </p>
         )}
         {(photo || photoNotice) && (
@@ -659,6 +721,18 @@ export default function ChatView(props: ChatViewProps) {
           >
             {instructions ? 'Instructions on' : 'Instructions'}
           </button>
+          {micAvailable && (
+            <button
+              type="button"
+              className="tool-chip"
+              aria-pressed={voiceChat}
+              title={voiceChat ? 'Stop the voice chat' : 'Talk with the AI hands-free: it reads each reply aloud, then listens again'}
+              onClick={() => (voiceChat ? stopVoiceChat() : startVoiceChat())}
+              disabled={!voiceChat && (generating || listening)}
+            >
+              {voiceChat ? 'Stop voice chat' : 'Voice chat'}
+            </button>
+          )}
           {loaded.model.canThink && (
             <button
               type="button"

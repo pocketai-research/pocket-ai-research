@@ -55,7 +55,7 @@ let wllama: Wllama | null = null
 let loaded: LoadedModel | null = null
 let pending: { key: string; promise: Promise<LoadedModel> } | null = null
 
-function createWllama() {
+export function createWllama() {
   return new Wllama(
     { default: wasmUrl },
     { allowOffline: true, suppressNativeLog: true, logger: LoggerWithoutDebug },

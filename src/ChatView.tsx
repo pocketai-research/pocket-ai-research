@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import { Share } from '@capacitor/share'
+import { embedTexts } from './ai/embeddings'
 import { describeError, generateReply, isAbortError, type ChatMessage, type LoadedModel } from './ai/engine'
 import Brand from './Brand'
 import ChatHistory from './ChatHistory'
@@ -286,7 +287,14 @@ export default function ChatView(props: ChatViewProps) {
       if (documents.length) {
         // Leave room for the reply and the chat: about 3,000 characters of excerpts in a 4,096 context.
         const budget = Math.max(1200, ((loaded.model.contextSize ?? 4096) - 2048) * 1.5)
-        const found = retrieve(await getDocuments(documents.map((d) => d.id)), history.at(-1)?.content ?? '', budget)
+        const docs = await getDocuments(documents.map((d) => d.id))
+        const question = history.at(-1)?.content ?? ''
+        let questionVector: Float32Array | undefined
+        if (replySettings.docSearch === 'meaning' && docs.some((d) => d.vectors)) {
+          // Without the embedding model (not downloaded yet, offline) word search still answers.
+          questionVector = (await embedTexts([question], 'query').catch(() => []))[0]
+        }
+        const found = retrieve(docs, question, budget, questionVector)
         context = found.context
         updateLast((m) => ({ ...m, sources: found.sources }))
       }

@@ -32,12 +32,14 @@ Requirements: Android 7.0 or newer, at least 4 GB RAM, and 0.5 to 1.1 GB of free
 
 | Tier | Model | Download | Best for |
 |---|---|---|---|
-| Light | Qwen2.5 0.5B Instruct (Q4_K_M) | 491 MB | Phones, short questions |
-| Balanced | Qwen2.5 1.5B Instruct (Q4_K_M) | 1.1 GB | Laptops and newer phones |
-| Smart | Qwen3 1.7B (Q4_K_M, thinking mode off) | 1.1 GB | Best reasoning and Indonesian; a little slower |
+| Light | Qwen3 0.6B (Q4_K_M) | 397 MB | Any phone, quick questions |
+| Balanced | Gemma 3 1B (Q4_K_M) | 806 MB | Best Indonesian and natural writing |
+| Smart | Qwen3 1.7B (Q4_K_M) | 1.1 GB | Reasoning and sums; can think before answering; slower |
 | Vision | InternVL3 1B (Q8_0) + image projector | 1.0 GB | Questions about photos, including text in them |
 
-Under **AI replies** you can choose the reply language (English, Indonesian, or the language of your message), the length and the style. Small models follow the language setting unreliably: Indonesian replies work best with the Balanced model. Each reply can be copied, shared, or regenerated.
+Under **AI replies** you can choose the reply language (English, Indonesian, or the language of your message), the length and the style. Small models follow the language setting unreliably: Indonesian replies work best with the Balanced model.
+
+The Light and Balanced models were chosen by comparing answers to Indonesian tasks (translating, a fact, a sum, explaining photosynthesis, writing a sick-day message): Qwen3 0.6B answered better than the earlier Qwen2.5 0.5B and about 1.7x faster, and Gemma 3 1B gave the best answers of all, ahead of the earlier Qwen2.5 1.5B, at about 80% of its speed. The earlier models stay listed while they are downloaded, so they can still be opened or deleted. Gemma is provided under and subject to the [Gemma Terms of Use](https://ai.google.dev/gemma/terms). Each reply can be copied, shared, or regenerated.
 
 **Templates** above the message box put a ready prompt in front of your text: summarise, translate to English or to Indonesian, fix grammar, write an email, explain simply. The translation templates set the reply language to the translation's target, whatever the reply settings say.
 
@@ -67,7 +69,8 @@ Looking at a photo is slow on a CPU: about 2 minutes for the first answer on a 4
 Tap the paperclip in a chat to attach a PDF, TXT or Markdown file, then ask about it. Everything happens on the device:
 
 - Text is extracted with [PDF.js](https://mozilla.github.io/pdf.js/) (loaded only when a PDF is opened) and split into passages of about 700 characters ([src/docs/extract.ts](src/docs/extract.ts)).
-- For each question, the best-matching passages are found with BM25 keyword search, which ignores common English and Indonesian words ([src/docs/retrieve.ts](src/docs/retrieve.ts)). No second AI model is needed, which keeps memory use low on phones. When nothing matches (for example "summarise this"), the start of the document is used.
+- For each question, the best-matching passages are found with BM25 keyword search, which ignores common English and Indonesian words ([src/docs/retrieve.ts](src/docs/retrieve.ts)). When nothing matches (for example "summarise this"), the start of the document is used.
+- **Search by meaning** (Documents → Find passages by → Meaning) also ranks passages with a small multilingual embedding model, [multilingual E5 small](https://huggingface.co/intfloat/multilingual-e5-small) (132 MB, MIT, downloaded once), and fuses both rankings (reciprocal rank fusion). It finds passages that say the same thing in other words or another language: an Indonesian question about solar power found the right section of an English report that shares no word with the question. Each passage is indexed when the document is attached (about 0.15 s per passage on a laptop) and the vectors are stored with it ([src/ai/embeddings.ts](src/ai/embeddings.ts)). The model runs in its own wllama instance, one text per request.
 - The AI answers from those passages only and cites them like [1]; the sources (file and page) are listed under the reply.
 - Documents are stored in IndexedDB, stay attached to their chat, and can be deleted under **Documents** on the start page. Scanned PDFs (pictures of pages) have no text and are not supported yet.
 

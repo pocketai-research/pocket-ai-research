@@ -22,6 +22,7 @@ import {
   type ReplySettings,
 } from './settings'
 import SetupView, { type LoadingState } from './SetupView'
+import { embedTexts, prepareEmbeddings } from './ai/embeddings'
 import { extractChunks } from './docs/extract'
 import { checkForUpdate, dismissUpdate, type AppUpdate } from './updates'
 import { deleteDocument, getDocuments, listDocuments, saveDocument, summarize, type DocSummary } from './docs/store'
@@ -77,6 +78,8 @@ export default function App() {
   const [chatDocs, setChatDocs] = useState<DocSummary[]>([])
   const [allDocs, setAllDocs] = useState<DocSummary[]>([])
   const [attachStatus, setAttachStatus] = useState<{ reading?: string; error?: string }>({})
+  // Preparing search by meaning: downloading the model, then indexing the stored documents.
+  const [meaningStatus, setMeaningStatus] = useState<{ text: string; error?: boolean } | null>(null)
   const [instructions, setInstructions] = useState('')
   const [update, setUpdate] = useState<AppUpdate | null>(null)
 
@@ -129,6 +132,28 @@ export default function App() {
   function changeReplySettings(next: ReplySettings) {
     setReplySettings(next)
     saveReplySettings(next)
+    if (next.docSearch === 'meaning' && replySettings.docSearch !== 'meaning') prepareMeaningSearch()
+  }
+
+  /** Downloads the embedding model if needed and indexes every stored document that is not yet. */
+  async function prepareMeaningSearch() {
+    try {
+      setMeaningStatus({ text: 'Getting the search model ready…' })
+      await prepareEmbeddings((fraction) =>
+        setMeaningStatus({ text: `Downloading the search model… ${Math.round(fraction * 100)}%` }),
+      )
+      const pending = (await getDocuments((await listDocuments()).map((d) => d.id))).filter((d) => !d.vectors)
+      for (const [i, doc] of pending.entries()) {
+        setMeaningStatus({ text: `Indexing ${doc.name} (${i + 1} of ${pending.length})…` })
+        await saveDocument({ ...doc, vectors: await embedTexts(doc.chunks.map((c) => c.text), 'passage') })
+      }
+      setMeaningStatus({ text: 'Search by meaning is ready.' })
+    } catch {
+      setMeaningStatus({
+        text: 'The search model could not be downloaded. Connect to the internet and choose Meaning again.',
+        error: true,
+      })
+    }
   }
 
   // Continue the most recent chat, so closing the app (or Android stopping it) loses nothing.
@@ -191,16 +216,30 @@ export default function App() {
       if (!chunks.length) {
         throw new Error('No text found in this file. Scanned PDFs (pictures of pages) are not supported yet.')
       }
+      let vectors: Float32Array[] | undefined
+      let notice: string | undefined
+      if (replySettings.docSearch === 'meaning') {
+        try {
+          vectors = await embedTexts(
+            chunks.map((c) => c.text),
+            'passage',
+            (done) => setAttachStatus({ reading: `${file.name}: indexing ${Math.round((done / chunks.length) * 100)}%` }),
+          )
+        } catch {
+          notice = `${file.name} is attached, but search by meaning is unavailable right now, so it is searched by words.`
+        }
+      }
       const doc = {
         id: crypto.randomUUID(),
         name: file.name,
         chars: chunks.reduce((sum, c) => sum + c.text.length, 0),
         addedAt: Date.now(),
         chunks,
+        ...(vectors ? { vectors } : {}),
       }
       await saveDocument(doc)
       setChatDocs((docs) => [...docs, summarize(doc)])
-      setAttachStatus({})
+      setAttachStatus(notice ? { error: notice } : {})
       refreshDocuments()
     } catch (err) {
       setAttachStatus({ error: `Could not read ${file.name}: ${err instanceof Error ? err.message : String(err)}` })
@@ -313,6 +352,7 @@ export default function App() {
       replySettings={replySettings}
       onReplySettingsChange={changeReplySettings}
       documents={allDocs}
+      meaningStatus={meaningStatus}
       onDeleteDocument={removeDocument}
       onOpen={openModel}
       onDelete={removeModel}

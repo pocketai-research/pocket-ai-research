@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { EMBEDDING_MODEL } from './ai/embeddings'
 import type { ModelOption } from './ai/models'
 import Brand, { REPO_URL } from './Brand'
 import { useInstallPrompt } from './pwa'
@@ -27,6 +28,8 @@ interface SetupViewProps {
   replySettings: ReplySettings
   onReplySettingsChange: (settings: ReplySettings) => void
   documents: DocSummary[]
+  /** Progress or a problem while search by meaning is prepared. */
+  meaningStatus: { text: string; error?: boolean } | null
   onDeleteDocument: (doc: DocSummary) => void
   onOpen: (model: ModelOption) => void
   onDelete: (model: ModelOption) => void
@@ -73,6 +76,7 @@ function LoadingProgress({ progress, cached }: { progress: number; cached: boole
 export default function SetupView(props: SetupViewProps) {
   const { models, downloaded, loading, activeId, error, notice, settings, onSettingsChange, onOpen, onDelete } = props
   const { onBackToChat, onShowMap, replySettings, onReplySettingsChange, documents, onDeleteDocument, banner } = props
+  const { meaningStatus } = props
   const [gpuAvailable, setGpuAvailable] = useState(false)
   const install = useInstallPrompt()
 
@@ -128,9 +132,11 @@ export default function SetupView(props: SetupViewProps) {
           <h2>Choose a model</h2>
           <p className="section-intro">Models are saved on this device. Use Wi-Fi for the first download.</p>
           <div className="grid">
-            {models.map((m) => {
+            {/* Replaced models stay listed while downloaded, so they can be opened or deleted. */}
+            {models.filter((m) => !m.replacedBy || downloaded?.has(m.url)).map((m) => {
               const isDownloaded = downloaded?.has(m.url) ?? false
               const isLoading = loading?.modelId === m.id
+              const successor = m.replacedBy && models.find((other) => other.id === m.replacedBy)
               return (
                 <article className="card model-card" key={m.id}>
                   <div className="model-head">
@@ -138,7 +144,10 @@ export default function SetupView(props: SetupViewProps) {
                     <span className="size">{m.size}</span>
                   </div>
                   <h3>{m.name}</h3>
-                  <p>{m.description}</p>
+                  <p>
+                    {m.description}
+                    {successor && ` Replaced by ${successor.name}, which answers better. Delete it to free ${m.size}.`}
+                  </p>
                   {m.attribution && <small className="attribution">{m.attribution}</small>}
                   {isLoading && loading ? (
                     <LoadingProgress progress={loading.progress} cached={isDownloaded} />
@@ -164,7 +173,7 @@ export default function SetupView(props: SetupViewProps) {
         <section className="section">
           <h2>AI replies</h2>
           <p className="section-intro">
-            Changes apply to the next reply. Indonesian replies work best with the Balanced or Smart model; the Light model often
+            Changes apply to the next reply. Indonesian replies work best with the Balanced model; the Light model sometimes
             answers in English anyway. Voice uses the device's own speech services; on Android, speaking to the app
             works offline once the language's offline speech pack is installed (Settings, Google, Voice).
           </p>
@@ -217,6 +226,27 @@ export default function SetupView(props: SetupViewProps) {
             Attach a PDF or text file in a chat with the paperclip button, then ask about it. Files are read and kept on
             this device. Scanned PDFs (pictures of pages) are not supported yet.
           </p>
+          <div className="settings">
+            <Choice
+              label="Find passages by"
+              value={replySettings.docSearch}
+              options={[
+                ['words', 'Words'],
+                ['meaning', 'Meaning'],
+              ]}
+              onChange={(docSearch) => onReplySettingsChange({ ...replySettings, docSearch })}
+            />
+          </div>
+          <p className="muted small">
+            Meaning also finds passages that say the same thing in other words or in another language, e.g. an Indonesian
+            question about an English document. It downloads a {EMBEDDING_MODEL.size} search model once and indexes each
+            document when it is attached.
+          </p>
+          {meaningStatus && (
+            <p className={meaningStatus.error ? 'alert' : 'muted'} role="status">
+              {meaningStatus.text}
+            </p>
+          )}
           {documents.length === 0 ? (
             <p className="muted">No documents yet.</p>
           ) : (

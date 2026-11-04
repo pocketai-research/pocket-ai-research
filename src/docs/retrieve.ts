@@ -24,7 +24,17 @@ interface Passage {
   text: string
   page: number | null
   part: number
+  vector?: Float32Array
 }
+
+const dot = (a: Float32Array, b: Float32Array) => {
+  let sum = 0
+  for (let i = 0; i < a.length; i++) sum += a[i] * b[i]
+  return sum
+}
+
+// Reciprocal rank fusion: a passage near the top of either ranking rises; k damps the top ranks.
+const FUSION_K = 60
 
 export interface Retrieval {
   /** Facts for the AI's system prompt. */
@@ -36,12 +46,19 @@ export interface Retrieval {
 const label = (p: Passage) => `${p.docName} ${p.page !== null ? `p. ${p.page}` : `part ${p.part}`}`
 
 /**
- * Picks the passages that best match the question (BM25), up to maxChars. When nothing matches,
- * e.g. "summarise this", it uses the start of each document instead.
+ * Picks the passages that best match the question, up to maxChars: by words (BM25), fused with
+ * the ranking by meaning when there is a question vector and the documents are indexed. A
+ * question with no topic words, e.g. "summarise this", gets the start of each document instead.
  */
-export function retrieve(docs: DocRecord[], question: string, maxChars: number): Retrieval {
+export function retrieve(docs: DocRecord[], question: string, maxChars: number, questionVector?: Float32Array): Retrieval {
   const passages: Passage[] = docs.flatMap((doc) =>
-    doc.chunks.map((chunk, i) => ({ docName: doc.name, text: chunk.text, page: chunk.page, part: i + 1 })),
+    doc.chunks.map((chunk, i) => ({
+      docName: doc.name,
+      text: chunk.text,
+      page: chunk.page,
+      part: i + 1,
+      vector: doc.vectors?.[i],
+    })),
   )
   const tokens = passages.map((p) => tokenize(p.text))
   const avgLength = tokens.reduce((sum, t) => sum + t.length, 0) / Math.max(1, tokens.length)
@@ -63,7 +80,20 @@ export function retrieve(docs: DocRecord[], question: string, maxChars: number):
   })
 
   const matched = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score)
-  const ranked = matched.length ? matched : scored // nothing matched: keep document order
+  const byMeaning = questionVector
+    ? scored
+        .filter((s) => s.passage.vector)
+        .map((s) => ({ ...s, similarity: dot(questionVector, s.passage.vector!) }))
+        .sort((a, b) => b.similarity - a.similarity)
+    : []
+  let ranked = matched.length ? matched : scored // nothing matched: keep document order
+  if (terms.length && byMeaning.length) {
+    const fused = new Map<number, number>()
+    for (const list of [matched, byMeaning]) {
+      list.forEach((s, rank) => fused.set(s.order, (fused.get(s.order) ?? 0) + 1 / (FUSION_K + rank)))
+    }
+    ranked = [...fused.entries()].sort((a, b) => b[1] - a[1]).map(([order]) => scored[order])
+  }
   const picked: Passage[] = []
   let used = 0
   for (const { passage } of ranked) {

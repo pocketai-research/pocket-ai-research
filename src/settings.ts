@@ -51,6 +51,8 @@ export interface ReplySettings {
   readAloud: 'off' | 'on'
   /** Let models that can (Qwen3) think before answering: better at maths and logic, but slower. */
   think: boolean
+  /** Find document passages by words only, or also by meaning (a 132 MB embedding model). */
+  docSearch: 'words' | 'meaning'
 }
 
 const REPLY_KEY = 'pocket-ai:replies'
@@ -60,6 +62,7 @@ const DEFAULT_REPLY_SETTINGS: ReplySettings = {
   creativity: 'balanced',
   readAloud: 'off',
   think: false,
+  docSearch: 'words',
 }
 
 export function readReplySettings(): ReplySettings {

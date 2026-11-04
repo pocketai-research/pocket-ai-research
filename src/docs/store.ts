@@ -16,6 +16,8 @@ export interface DocSummary {
 
 export interface DocRecord extends DocSummary {
   chunks: DocChunk[]
+  /** One unit vector per chunk, for search by meaning (src/ai/embeddings.ts); absent until indexed. */
+  vectors?: Float32Array[]
 }
 
 interface DocsDB extends DBSchema {

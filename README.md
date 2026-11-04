@@ -1,5 +1,7 @@
 # Pocket Ai Research
 
+<p align="center"><img src="design/logo-3d.png" alt="Pocket Ai Research logo: a hand putting a phone with a glowing AI spark into a jeans pocket" width="520"></p>
+
 **Offline AI that runs on your device.**
 
 An AI chat assistant that runs **entirely on your phone or computer**. Download a model once, then chat any time, even with no internet connection. Your conversations never leave your device.
@@ -116,7 +118,7 @@ See [docs/CONCEPT.md](docs/CONCEPT.md) for the full concept and usage guide.
 
 ## Logo
 
-A hand putting a phone with an AI spark into a jeans pocket: the AI that lives in your pocket. The sources are in [design/](design): [logo.svg](design/logo.svg) for app icons, [logo-small.svg](design/logo-small.svg) (also [public/favicon.svg](public/favicon.svg)) for 32 px and below, where the hand would be lost, and [logo-bleed.svg](design/logo-bleed.svg) for icons that launchers crop (the web app's maskable icon and Android's adaptive icon), with the drawing inside the safe zone and the arm running off the edge. The PNG icons in public/icons and android/app/src/main/res are rendered from these files.
+A hand putting a phone with a glowing AI spark into a jeans pocket: the AI that lives in your pocket. The source is the 3D render [design/logo-3d.png](design/logo-3d.png). App icons are a square crop around its frame: the web app and Android icons, the favicon and the header logo; icons that launchers crop to a circle (the maskable web icon and Android's adaptive icon) keep the whole frame inside the visible circle, on the image's own dark background (#050C14). Android's splash screen shows the whole image, wordmark included. At 16 px (a browser tab) the detailed render reads only as the orange frame.
 
 ## Development
 

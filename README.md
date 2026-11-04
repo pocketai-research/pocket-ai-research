@@ -39,6 +39,8 @@ Requirements: Android 7.0 or newer, at least 4 GB RAM, and 0.5 to 1.1 GB of free
 
 Under **AI replies** you can choose the reply language (English, Indonesian, or the language of your message), the length and the style. Small models follow the language setting unreliably: Indonesian replies work best with the Balanced model. Each reply can be copied, shared, or regenerated.
 
+**Templates** above the message box put a ready prompt in front of your text: summarise, translate to English or to Indonesian, fix grammar, write an email, explain simply. The translation templates set the reply language to the translation's target, whatever the reply settings say.
+
 **Instructions** above the message box tell the AI how to answer in the current chat ("You are a patient maths teacher", "Answer briefly"); they are added to the system prompt and saved with the chat. With the Smart model, **Think first** lets Qwen3 reason before it answers: better at maths and logic, but much slower on a phone, and the thinking uses the same token budget as the answer. Its thoughts are shown apart from the answer under **Show thinking**.
 
 Models must stay well under 2 GB: in WebAssembly the weights need one allocation, and a 3B model (about 2 GB, e.g. Llama 3.2 3B) downloads but cannot load. The Smart model therefore is Qwen3 1.7B, with its thinking mode off unless you turn on Think first. It uses a 3,072-token context to save memory; older messages are dropped from what a model sees when a chat gets longer than its context.
@@ -78,6 +80,8 @@ An online world map with GPS, where you can pick a country and then drill down t
 - **Offline areas:** tiles for the region's box, plus the style, sprite and Latin glyphs, are stored in IndexedDB and served to MapLibre through an `offline://` protocol ([src/map/offlineMap.ts](src/map/offlineMap.ts)).
 
 **Search and ask:** the Search tab finds places around your GPS position (or the map centre) in the map data itself: online from OpenFreeMap, offline from the saved area. Questions in English or Indonesian are matched to categories ("nearest hospital", "masjid terdekat", "SPBU", "apotek", ...) or to place names. Results are listed and numbered on the map with distance and direction, and when an AI model is open it writes a short answer using only those places, so it cannot invent locations ([src/map/places.ts](src/map/places.ts)).
+
+**Saved places:** star a search result, or save your location or the map centre under a name such as "Rumah", to get directions with one tap (**Go**), online or in an offline area. Asking for a saved place by name works too ("rute ke rumah"). They are kept on the device in IndexedDB.
 
 **Emergency (SOS):** the red **SOS** button on the map opens Indonesia's emergency numbers (112, 110, 118, 119, 113, 115; tap to call, free, needs mobile signal only), buttons for directions to the nearest hospital, police station or fire station (found and routed on the device, without waiting for an AI answer), and **My location**: coordinates, accuracy, a compass on phones with the sensor, and buttons to share the location, send it by SMS (works without internet) or copy it ([src/map/EmergencyPanel.tsx](src/map/EmergencyPanel.tsx)).
 

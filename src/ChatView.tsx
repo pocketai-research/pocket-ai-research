@@ -63,6 +63,36 @@ const SUGGESTIONS = [
 
 const DOCUMENT_SUGGESTIONS = ['Summarise this document.', 'What are the key points?']
 
+interface Template {
+  label: string
+  prompt: string
+  /** Translations need the reply in their target language, whatever the reply settings say. */
+  language?: ReplySettings['language']
+}
+
+const TEMPLATES: Template[] = [
+  { label: 'Summarise', prompt: 'Summarise the following text in a few short bullet points:' },
+  { label: 'Translate to English', prompt: 'Translate the following text into English. Reply with the translation only:', language: 'english' },
+  {
+    label: 'Translate to Indonesian',
+    prompt: 'Translate the following text into Indonesian. Reply with the translation only:',
+    language: 'indonesian',
+  },
+  {
+    label: 'Fix grammar',
+    prompt: 'Fix the grammar and spelling of the following text, keeping its language and meaning. Reply with the corrected text only:',
+    language: 'auto',
+  },
+  { label: 'Write an email', prompt: 'Write a short, polite email about the following:' },
+  { label: 'Explain simply', prompt: 'Explain the following simply, as to a beginner:' },
+]
+
+/** The text without a template's prompt in front of it. */
+const withoutTemplate = (text: string) => {
+  const used = TEMPLATES.find((t) => text.startsWith(t.prompt))
+  return used ? text.slice(used.prompt.length).replace(/^\s+/, '') : text
+}
+
 const INSTRUCTION_PRESETS = [
   'Answer briefly, in two or three sentences.',
   'You are a patient maths teacher. Explain step by step.',
@@ -92,6 +122,9 @@ export default function ChatView(props: ChatViewProps) {
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null)
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const [instructionsOpen, setInstructionsOpen] = useState(false)
+  const [templatesOpen, setTemplatesOpen] = useState(false)
+  const [template, setTemplate] = useState<Template | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const [instructionsDraft, setInstructionsDraft] = useState('')
   const controllerRef = useRef<AbortController | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -114,11 +147,20 @@ export default function ChatView(props: ChatViewProps) {
     const content = text.trim() || (image ? 'Describe this photo.' : '')
     if (!content || generating) return
     stopSpeaking()
-    const message: ChatEntry = { role: 'user', content, image, ...(photo?.detail ? { detail: true } : {}) }
+    // A translation template sets the reply's language, as long as its prompt is still there.
+    const replyLanguage = template?.language && content.startsWith(template.prompt) ? template.language : undefined
+    const message: ChatEntry = {
+      role: 'user',
+      content,
+      image,
+      ...(photo?.detail ? { detail: true } : {}),
+      ...(replyLanguage ? { replyLanguage } : {}),
+    }
     setMessages((prev) => [...prev, message, { role: 'assistant', content: '' }])
     setInput('')
     setPhoto(null)
-    streamInto([...toHistory(messages), message], messages.length + 1)
+    setTemplate(null)
+    streamInto([...toHistory(messages), message], messages.length + 1, replyLanguage)
   }
 
   function pickPhoto() {
@@ -148,6 +190,19 @@ export default function ChatView(props: ChatViewProps) {
     } catch {
       setPhotoNotice('This image could not be opened. Try a JPEG or PNG photo.')
     }
+  }
+
+  /** Puts the template's prompt in front of what is already typed, ready for the text to go after it. */
+  function chooseTemplate(next: Template | null) {
+    const text = withoutTemplate(input)
+    setInput(next ? `${next.prompt}\n\n${text}` : text)
+    setTemplate(next)
+    setTemplatesOpen(false)
+    requestAnimationFrame(() => {
+      const box = inputRef.current
+      box?.focus()
+      box?.setSelectionRange(box.value.length, box.value.length)
+    })
   }
 
   function saveInstructions(text: string) {
@@ -199,7 +254,7 @@ export default function ChatView(props: ChatViewProps) {
     if (lastUser < 0 || generating) return
     stopSpeaking()
     setMessages((prev) => [...prev.slice(0, lastUser + 1), { role: 'assistant', content: '' }])
-    streamInto(toHistory(messages.slice(0, lastUser + 1)), lastUser + 1)
+    streamInto(toHistory(messages.slice(0, lastUser + 1)), lastUser + 1, messages[lastUser].replyLanguage)
   }
 
   async function copyReply(text: string, index: number) {
@@ -219,7 +274,8 @@ export default function ChatView(props: ChatViewProps) {
   }
 
   /** Streams a reply into the empty assistant message at the end of the list (at replyIndex). */
-  async function streamInto(history: ChatMessage[], replyIndex: number) {
+  async function streamInto(history: ChatMessage[], replyIndex: number, language?: ReplySettings['language']) {
+    const reply = language ? { ...replySettings, language } : replySettings
     let replyText = ''
     let thoughtText = ''
     setGenerating(true)
@@ -236,7 +292,7 @@ export default function ChatView(props: ChatViewProps) {
       }
       const { tokensPerSecond } = await generateReply(
         history,
-        { reply: replySettings, context, instructions },
+        { reply, context, instructions },
         (piece) => {
           replyText += piece
           updateLast((m) => ({ ...m, content: m.content + piece }))
@@ -522,7 +578,38 @@ export default function ChatView(props: ChatViewProps) {
             </div>
           </div>
         )}
+        {templatesOpen && (
+          <div className="container template-menu" role="group" aria-label="Templates">
+            {TEMPLATES.map((t) => (
+              <button
+                type="button"
+                key={t.label}
+                className="suggestion"
+                aria-pressed={template === t}
+                onClick={() => chooseTemplate(t)}
+              >
+                {t.label}
+              </button>
+            ))}
+            {template && (
+              <button type="button" className="link" onClick={() => chooseTemplate(null)}>
+                No template
+              </button>
+            )}
+          </div>
+        )}
         <div className="container composer-tools">
+          <button
+            type="button"
+            className="tool-chip"
+            aria-pressed={Boolean(template)}
+            aria-expanded={templatesOpen}
+            title="Summarise, translate, fix grammar and more"
+            onClick={() => setTemplatesOpen((open) => !open)}
+            disabled={generating}
+          >
+            {template ? template.label : 'Templates'}
+          </button>
           <button
             type="button"
             className="tool-chip"
@@ -606,6 +693,7 @@ export default function ChatView(props: ChatViewProps) {
             </button>
           )}
           <textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {

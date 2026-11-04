@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import type { ChatMessage } from './ai/engine'
+import type { ReplySettings } from './settings'
 
 export interface ChatEntry extends ChatMessage {
   /** What a thinking model worked through before its answer (Think first). */
@@ -8,6 +9,8 @@ export interface ChatEntry extends ChatMessage {
   error?: boolean
   /** Document passages the reply was based on, e.g. "report.pdf p. 3". */
   sources?: string[]
+  /** A user message sent with a translation template: the reply's language, whatever the settings say. */
+  replyLanguage?: ReplySettings['language']
 }
 
 export interface Conversation {

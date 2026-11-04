@@ -1597,3 +1597,86 @@ a.btn {
     transition: none;
   }
 }
+
+/* Saved places */
+
+.place-save {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.place-save:hover {
+  background: var(--accent-soft);
+}
+
+.place-save[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+.place-save[aria-pressed='true'] svg {
+  fill: currentColor;
+}
+
+.place-rank.saved svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.place-go:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.saved-places {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.saved-places .list-title,
+.saved-places .place-list,
+.saved-places .search-form {
+  align-self: stretch;
+}
+
+.saved-places .list-title {
+  margin: 0;
+}
+
+.clear-search {
+  align-self: flex-start;
+}
+
+/* Task templates */
+
+.template-menu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.template-menu .suggestion {
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+.template-menu .suggestion[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}

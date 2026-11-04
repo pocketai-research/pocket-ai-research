@@ -14,6 +14,15 @@ export interface OfflineArea {
   createdAt: number
 }
 
+/** A place the user saved, e.g. "Home", for directions with one tap. */
+export interface Favorite {
+  id: string
+  name: string
+  lon: number
+  lat: number
+  createdAt: number
+}
+
 interface MapsDB extends DBSchema {
   areas: { key: string; value: OfflineArea }
   /** Vector tiles, keyed "<areaId>/<z>/<x>/<y>". */
@@ -22,22 +31,25 @@ interface MapsDB extends DBSchema {
   assets: { key: string; value: ArrayBuffer }
   /** Child regions from Overpass, keyed by parent OSM relation id. */
   admin: { key: number; value: AdminChildren }
+  favorites: { key: string; value: Favorite }
 }
 
 let dbPromise: Promise<IDBPDatabase<MapsDB>> | null = null
 
 function db() {
-  dbPromise ??= openDB<MapsDB>('pocket-ai-maps', 2, {
+  dbPromise ??= openDB<MapsDB>('pocket-ai-maps', 3, {
     upgrade(database, oldVersion, _newVersion, transaction) {
       if (oldVersion < 1) {
         database.createObjectStore('areas', { keyPath: 'id' })
         database.createObjectStore('tiles')
         database.createObjectStore('assets')
         database.createObjectStore('admin')
-      } else {
+      } else if (oldVersion < 2) {
         // Version 2 changed the cached region lists (grouped by level, overseas areas kept).
         transaction.objectStore('admin').clear()
       }
+      // Version 3 added saved places.
+      if (oldVersion < 3) database.createObjectStore('favorites', { keyPath: 'id' })
     },
   })
   return dbPromise
@@ -99,4 +111,21 @@ export async function putAdmin(parentId: number, children: AdminChildren) {
   } catch {
     // Caching is optional.
   }
+}
+
+/** Saved places, oldest first. */
+export async function listFavorites(): Promise<Favorite[]> {
+  try {
+    return (await (await db()).getAll('favorites')).sort((a, b) => a.createdAt - b.createdAt)
+  } catch {
+    return []
+  }
+}
+
+export async function saveFavorite(favorite: Favorite) {
+  await (await db()).put('favorites', favorite)
+}
+
+export async function deleteFavorite(id: string) {
+  await (await db()).delete('favorites', id)
 }

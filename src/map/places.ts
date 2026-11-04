@@ -111,6 +111,11 @@ function measure(from: [number, number], to: [number, number]) {
   return { distance, direction: DIRECTIONS[Math.round(bearing / 45) % 8] }
 }
 
+/** A place at a point, with its distance and direction from the origin (a saved place, for example). */
+export function placeAt(name: string, kind: string, lon: number, lat: number, origin: [number, number]): Place {
+  return { name, kind, subclass: kind, lon, lat, ...measure(origin, [lon, lat]) }
+}
+
 export const formatDistance = (metres: number) =>
   metres < 1000 ? `${Math.round(metres / 10) * 10} m` : `${(metres / 1000).toFixed(1)} km`
 

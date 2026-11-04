@@ -1,11 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { describeError, generateReply, isAbortError } from '../ai/engine'
-import { RouteIcon } from '../icons'
+import { RouteIcon, StarIcon } from '../icons'
 import Markdown from '../Markdown'
 import type { ReplySettings } from '../settings'
 import { findRoute, formatDuration, routeContext, travelLabel } from './directions'
-import type { OfflineArea } from './offlineStore'
-import { describeQuery, formatDistance, loadTile, parseQuery, placesContext, searchPlaces, type Place } from './places'
+import { deleteFavorite, listFavorites, saveFavorite, type Favorite, type OfflineArea } from './offlineStore'
+import {
+  describeQuery,
+  formatDistance,
+  loadTile,
+  parseQuery,
+  placeAt,
+  placesContext,
+  searchPlaces,
+  type Place,
+} from './places'
 import type { Route, TravelMode } from './route'
 
 export interface SearchOrigin {
@@ -44,6 +53,11 @@ interface Results {
   coarse: boolean
 }
 
+/** Saved places keep their name, so a place counts as saved when name and position match. */
+const sameSpot = (f: Favorite, p: Place) => f.name === p.name && Math.abs(f.lon - p.lon) < 1e-5 && Math.abs(f.lat - p.lat) < 1e-5
+
+const favoritePlace = (f: Favorite, origin: [number, number]) => placeAt(f.name, 'saved place', f.lon, f.lat, origin)
+
 interface Directions {
   place: Place
   origin: SearchOrigin
@@ -60,16 +74,44 @@ export default function SearchPanel({ area, online, ai, getOrigin, onResults, on
   const [answer, setAnswer] = useState('')
   const [directions, setDirections] = useState<Directions | null>(null)
   const [travelMode, setTravelMode] = useState<TravelMode>('drive')
+  const [favorites, setFavorites] = useState<Favorite[]>([])
+  // A spot being named before it is saved.
+  const [naming, setNaming] = useState<{ origin: SearchOrigin; name: string } | null>(null)
   const controllerRef = useRef<AbortController | null>(null)
   const routeControllerRef = useRef<AbortController | null>(null)
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    listFavorites().then(setFavorites)
+    return () => {
       controllerRef.current?.abort()
       routeControllerRef.current?.abort()
-    },
-    [],
-  )
+    }
+  }, [])
+
+  async function addFavorite(name: string, lon: number, lat: number) {
+    await saveFavorite({ id: crypto.randomUUID(), name, lon, lat, createdAt: Date.now() })
+    setFavorites(await listFavorites())
+  }
+
+  async function removeFavorite(favorite: Favorite) {
+    await deleteFavorite(favorite.id)
+    setFavorites(await listFavorites())
+  }
+
+  async function toggleSaved(place: Place) {
+    const saved = favorites.find((f) => sameSpot(f, place))
+    if (saved) await removeFavorite(saved)
+    else await addFavorite(place.name, place.lon, place.lat)
+  }
+
+  function clearResults() {
+    controllerRef.current?.abort()
+    closeDirections()
+    if (results) onResults([], results.origin)
+    setResults(null)
+    setAnswer('')
+    setInput('')
+  }
 
   /** Finds and shows the way to a place; resolves to the route, or null when there is none. */
   async function showDirections(place: Place, origin: SearchOrigin, mode: TravelMode): Promise<Route | null> {
@@ -132,9 +174,14 @@ export default function SearchPanel({ area, online, ai, getOrigin, onResults, on
     setError(null)
     setAnswer('')
     try {
-      const { places, radius, zoom } = await searchPlaces(query, origin.point, area)
+      // "Route to home": a saved place whose name is the whole question goes first.
+      const saved = query.text && favorites.find((f) => f.name.toLowerCase() === query.text)
+      const found = saved
+        ? { places: [favoritePlace(saved, origin.point)], radius: 0, zoom: 14 }
+        : await searchPlaces(query, origin.point, area)
+      const { places, radius, zoom } = found
       if (controller.signal.aborted) return
-      setResults({ title: describeQuery(query), places, radius, origin, coarse: zoom < 14 })
+      setResults({ title: saved ? 'saved place' : describeQuery(query), places, radius, origin, coarse: zoom < 14 })
       onResults(places, origin)
       let context = placesContext(query, places, origin.label)
       // "Route to the nearest hospital": directions to the first place, and the AI explains them.
@@ -164,7 +211,7 @@ export default function SearchPanel({ area, online, ai, getOrigin, onResults, on
   const directionsView = directions && (
     <div className="directions">
       <button className="link" onClick={closeDirections}>
-        ← Back to the list
+        {results ? '← Back to the list' : '← Back'}
       </button>
       <h3 className="list-title">To {directions.place.name}</h3>
       <div className="mode-switch" role="group" aria-label="Travel mode">
@@ -206,6 +253,93 @@ export default function SearchPanel({ area, online, ai, getOrigin, onResults, on
     </div>
   )
 
+  const here = getOrigin()
+  const savedPlaces = (
+    <section className="saved-places" aria-labelledby="saved-places-title">
+      <h3 className="list-title" id="saved-places-title">
+        Saved places
+      </h3>
+      {favorites.length ? (
+        <ol className="place-list">
+          {favorites.map((favorite) => {
+            const place = here && favoritePlace(favorite, here.point)
+            return (
+              <li key={favorite.id}>
+                <button className="place-main" onClick={() => place && onFocus(place)}>
+                  <span className="place-rank saved" aria-hidden="true">
+                    <StarIcon />
+                  </span>
+                  <span className="place-info">
+                    <strong>{favorite.name}</strong>
+                    {place && (
+                      <small>
+                        {formatDistance(place.distance)} {place.direction} of {here.label}
+                      </small>
+                    )}
+                  </span>
+                </button>
+                <button
+                  className="place-save"
+                  aria-label={`Remove ${favorite.name} from saved places`}
+                  title="Remove"
+                  onClick={() => confirm(`Remove ${favorite.name} from your saved places?`) && removeFavorite(favorite)}
+                >
+                  ×
+                </button>
+                <button
+                  className="place-go"
+                  aria-label={`Directions to ${favorite.name}`}
+                  title="Directions"
+                  disabled={!place}
+                  onClick={() => place && here && showDirections(place, here, travelMode)}
+                >
+                  <RouteIcon />
+                  Go
+                </button>
+              </li>
+            )
+          })}
+        </ol>
+      ) : (
+        <p className="muted small">Save places such as Home or Work to get directions with one tap, also offline.</p>
+      )}
+      {naming ? (
+        <form
+          className="search-form"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const name = naming.name.trim()
+            if (!name) return
+            addFavorite(name, ...naming.origin.point)
+            setNaming(null)
+          }}
+        >
+          <input
+            className="panel-search"
+            value={naming.name}
+            onChange={(e) => setNaming({ ...naming, name: e.target.value })}
+            placeholder={`Name for ${naming.origin.label}, e.g. Home`}
+            aria-label={`Name for ${naming.origin.label}`}
+            maxLength={60}
+            autoFocus
+          />
+          <button className="btn primary" type="submit" disabled={!naming.name.trim()}>
+            Save
+          </button>
+          <button className="btn ghost" type="button" onClick={() => setNaming(null)}>
+            Cancel
+          </button>
+        </form>
+      ) : (
+        here && (
+          <button className="btn ghost save-spot" onClick={() => setNaming({ origin: getOrigin() ?? here, name: '' })}>
+            {here.label === 'your location' ? 'Save my location' : 'Save the map centre'}
+          </button>
+        )
+      )}
+    </section>
+  )
+
   return (
     <>
       <form
@@ -228,28 +362,35 @@ export default function SearchPanel({ area, online, ai, getOrigin, onResults, on
         </button>
       </form>
 
-      {!results && !busy && (
-        <div className="suggestions start">
-          {EXAMPLES.map((example) => (
-            <button
-              key={example}
-              className="suggestion"
-              onClick={() => {
-                setInput(example)
-                run(example)
-              }}
-            >
-              {example}
-            </button>
-          ))}
-        </div>
+      {!results && !busy && !directions && (
+        <>
+          <div className="suggestions start">
+            {EXAMPLES.map((example) => (
+              <button
+                key={example}
+                className="suggestion"
+                onClick={() => {
+                  setInput(example)
+                  run(example)
+                }}
+              >
+                {example}
+              </button>
+            ))}
+          </div>
+          {savedPlaces}
+        </>
       )}
 
       {error && <p className="alert">{error}</p>}
       {busy && !results && <p className="muted">Searching the map…</p>}
+      {!results && directionsView}
 
       {results && (
         <>
+          <button className="link clear-search" onClick={clearResults}>
+            Clear search
+          </button>
           {(answer || (busy && ai.ready)) && (
             <div className="answer-card">
               <strong>AI answer</strong>
@@ -284,6 +425,15 @@ export default function SearchPanel({ area, online, ai, getOrigin, onResults, on
                           {place.kind.replace(/_/g, ' ')} · {formatDistance(place.distance)} {place.direction}
                         </small>
                       </span>
+                    </button>
+                    <button
+                      className="place-save"
+                      aria-label={favorites.some((f) => sameSpot(f, place)) ? `Remove ${place.name} from saved places` : `Save ${place.name}`}
+                      aria-pressed={favorites.some((f) => sameSpot(f, place))}
+                      title="Save this place"
+                      onClick={() => toggleSaved(place)}
+                    >
+                      <StarIcon />
                     </button>
                     <button
                       className="place-go"

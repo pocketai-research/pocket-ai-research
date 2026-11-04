@@ -45,6 +45,8 @@ The Light and Balanced models were chosen by comparing answers to Indonesian tas
 
 **Templates** above the message box put a ready prompt in front of your text: summarise, translate to English or to Indonesian, fix grammar, write an email, explain simply. The translation templates set the reply language to the translation's target, whatever the reply settings say.
 
+**Notes:** write notes under **Notes** on the start page (bills, plans, recipes, contacts) and ask about them in any chat, for example "Kapan saya harus bayar listrik?". Unlike attached documents, a note is only used when it matches the question (a shared word, or a close meaning with search by meaning on), at most two passages, and the sources under the reply name it.
+
 **Memory:** say "Remember that…" or "Ingat bahwa…" in a chat (or add a fact under **Memory** on the start page) and the AI knows it in every chat from then on, such as your name, your job or how you like answers. Facts are only saved when you ask, never guessed from conversations; they stay on the device (up to 30), are added to the system prompt, and can be forgotten one by one or switched off ([src/memory.ts](src/memory.ts)).
 
 **Instructions** above the message box tell the AI how to answer in the current chat ("You are a patient maths teacher", "Answer briefly"); they are added to the system prompt and saved with the chat. With the Smart model, **Think first** lets Qwen3 reason before it answers: better at maths and logic, but much slower on a phone, and the thinking uses the same token budget as the answer. Its thoughts are shown apart from the answer under **Show thinking**.

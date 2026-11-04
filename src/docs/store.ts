@@ -20,16 +20,29 @@ export interface DocRecord extends DocSummary {
   vectors?: Float32Array[]
 }
 
+/** A note the user wrote in the app; searched like a document, in every chat. */
+export interface Note {
+  id: string
+  title: string
+  text: string
+  updatedAt: number
+  chunks: DocChunk[]
+  vectors?: Float32Array[]
+}
+
 interface DocsDB extends DBSchema {
   documents: { key: string; value: DocRecord }
+  notes: { key: string; value: Note }
 }
 
 let dbPromise: Promise<IDBPDatabase<DocsDB>> | null = null
 
 function db() {
-  dbPromise ??= openDB<DocsDB>('pocket-ai-docs', 1, {
-    upgrade(database) {
-      database.createObjectStore('documents', { keyPath: 'id' })
+  dbPromise ??= openDB<DocsDB>('pocket-ai-docs', 2, {
+    upgrade(database, oldVersion) {
+      if (oldVersion < 1) database.createObjectStore('documents', { keyPath: 'id' })
+      // Version 2 added notes.
+      if (oldVersion < 2) database.createObjectStore('notes', { keyPath: 'id' })
     },
   })
   return dbPromise
@@ -58,3 +71,30 @@ export async function listDocuments(): Promise<DocSummary[]> {
 export async function deleteDocument(id: string) {
   await (await db()).delete('documents', id)
 }
+
+/** Notes, most recently changed first. */
+export async function listNotes(): Promise<Note[]> {
+  try {
+    return (await (await db()).getAll('notes')).sort((a, b) => b.updatedAt - a.updatedAt)
+  } catch {
+    return []
+  }
+}
+
+export async function saveNote(note: Note) {
+  await (await db()).put('notes', note)
+}
+
+export async function deleteNote(id: string) {
+  await (await db()).delete('notes', id)
+}
+
+/** A note in the shape retrieval reads: the title is part of what is searched. */
+export const noteAsDocument = (note: Note): DocRecord => ({
+  id: note.id,
+  name: `note "${note.title}"`,
+  chars: note.text.length,
+  addedAt: note.updatedAt,
+  chunks: note.chunks,
+  vectors: note.vectors,
+})

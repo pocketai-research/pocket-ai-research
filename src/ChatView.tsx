@@ -8,7 +8,7 @@ import { copyText } from './clipboard'
 import type { ChatEntry, Conversation } from './chatStore'
 import { ACCEPTED_FILES } from './docs/extract'
 import { retrieve } from './docs/retrieve'
-import { getDocuments, type DocSummary } from './docs/store'
+import { getDocuments, listNotes, noteAsDocument, type DocSummary } from './docs/store'
 import {
   CameraIcon,
   CopyIcon,
@@ -363,21 +363,37 @@ export default function ChatView(props: ChatViewProps) {
     const controller = new AbortController()
     controllerRef.current = controller
     try {
-      let context: string | undefined
-      if (documents.length) {
+      const contexts: string[] = []
+      const sources: string[] = []
+      const question = history.at(-1)?.content ?? ''
+      const docs = documents.length ? await getDocuments(documents.map((d) => d.id)) : []
+      const notes = (await listNotes()).map(noteAsDocument)
+      let questionVector: Float32Array | undefined
+      if (replySettings.docSearch === 'meaning' && [...docs, ...notes].some((d) => d.vectors)) {
+        // Without the embedding model (not downloaded yet, offline) word search still answers.
+        questionVector = (await embedTexts([question], 'query').catch(() => []))[0]
+      }
+      if (docs.length) {
         // Leave room for the reply and the chat: about 3,000 characters of excerpts in a 4,096 context.
         const budget = Math.max(1200, ((loaded.model.contextSize ?? 4096) - 2048) * 1.5)
-        const docs = await getDocuments(documents.map((d) => d.id))
-        const question = history.at(-1)?.content ?? ''
-        let questionVector: Float32Array | undefined
-        if (replySettings.docSearch === 'meaning' && docs.some((d) => d.vectors)) {
-          // Without the embedding model (not downloaded yet, offline) word search still answers.
-          questionVector = (await embedTexts([question], 'query').catch(() => []))[0]
-        }
         const found = retrieve(docs, question, budget, questionVector)
-        context = found.context
-        updateLast((m) => ({ ...m, sources: found.sources }))
+        contexts.push(found.context)
+        sources.push(...found.sources)
       }
+      if (notes.length) {
+        // Notes join any chat, but only the ones that match the question.
+        const found = retrieve(notes, question, 900, questionVector, {
+          onlyMatches: { minSimilarity: 0.82, maxPassages: 2 },
+          heading: "From the user's own notes:",
+          instruction: 'Use these notes when they answer the question, and say that the answer comes from their notes.',
+        })
+        if (found.sources.length) {
+          contexts.push(found.context)
+          sources.push(...found.sources)
+        }
+      }
+      if (sources.length) updateLast((m) => ({ ...m, sources }))
+      const context = contexts.join('\n\n') || undefined
       const { tokensPerSecond } = await generateReply(
         history,
         { reply, context, instructions, memory: replySettings.memory === 'on' ? memory : [] },

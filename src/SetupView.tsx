@@ -5,7 +5,7 @@ import Brand, { REPO_URL } from './Brand'
 import { useInstallPrompt } from './pwa'
 import { engineThreads, estimateSpeed, hasWebGPU, recommendModel, speedScore } from './deviceCheck'
 import DeviceChecks from './DeviceChecks'
-import type { DocSummary } from './docs/store'
+import type { DocSummary, Note } from './docs/store'
 import { TrashIcon } from './icons'
 import { MAX_FACT_CHARS, MAX_MEMORY, withFact, type MemoryItem } from './memory'
 import type { EngineSettings, ReplySettings } from './settings'
@@ -33,6 +33,9 @@ interface SetupViewProps {
   meaningStatus: { text: string; error?: boolean } | null
   memory: MemoryItem[]
   onMemoryChange: (memory: MemoryItem[]) => void
+  notes: Note[]
+  onSaveNote: (draft: { id?: string; title: string; text: string }) => Promise<void>
+  onDeleteNote: (id: string) => void
   onDeleteDocument: (doc: DocSummary) => void
   onOpen: (model: ModelOption) => void
   onDelete: (model: ModelOption) => void
@@ -79,7 +82,10 @@ function LoadingProgress({ progress, cached }: { progress: number; cached: boole
 export default function SetupView(props: SetupViewProps) {
   const { models, downloaded, loading, activeId, error, notice, settings, onSettingsChange, onOpen, onDelete } = props
   const { onBackToChat, onShowMap, replySettings, onReplySettingsChange, documents, onDeleteDocument, banner } = props
-  const { meaningStatus, memory, onMemoryChange } = props
+  const { meaningStatus, memory, onMemoryChange, notes, onSaveNote, onDeleteNote } = props
+  // The note being written or edited (no id yet for a new one).
+  const [noteDraft, setNoteDraft] = useState<{ id?: string; title: string; text: string } | null>(null)
+  const [savingNote, setSavingNote] = useState(false)
   const [newFact, setNewFact] = useState('')
   const [gpuAvailable, setGpuAvailable] = useState(false)
   // Measured after the first paint: the test keeps the CPU busy for about 0.75 s the first time.
@@ -295,6 +301,73 @@ export default function SetupView(props: SetupViewProps) {
               Add
             </button>
           </form>
+        </section>
+
+        <section className="section">
+          <h2>Notes</h2>
+          <p className="section-intro">
+            Write things down here (bills, plans, recipes, contacts) and ask about them in any chat, e.g. "When do I pay
+            the electricity?". A note is only used when it matches the question; the sources under the reply name it.
+          </p>
+          {notes.length === 0 && !noteDraft && <p className="muted">No notes yet.</p>}
+          {notes.length > 0 && (
+            <ul className="area-list note-list">
+              {notes.map((note) => (
+                <li key={note.id}>
+                  <button className="area-info note-open" onClick={() => setNoteDraft({ id: note.id, title: note.title, text: note.text })}>
+                    <strong>{note.title}</strong>
+                    <small>{note.text.replace(/\s+/g, ' ').slice(0, 80)}</small>
+                  </button>
+                  <button
+                    className="icon-btn"
+                    aria-label={`Delete the note ${note.title}`}
+                    onClick={() => confirm(`Delete the note "${note.title}"?`) && onDeleteNote(note.id)}
+                  >
+                    <TrashIcon />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {noteDraft ? (
+            <form
+              className="note-form"
+              onSubmit={async (e) => {
+                e.preventDefault()
+                setSavingNote(true)
+                await onSaveNote(noteDraft).finally(() => setSavingNote(false))
+                setNoteDraft(null)
+              }}
+            >
+              <input
+                value={noteDraft.title}
+                maxLength={80}
+                onChange={(e) => setNoteDraft({ ...noteDraft, title: e.target.value })}
+                placeholder="Title, e.g. Electricity"
+                aria-label="Note title"
+              />
+              <textarea
+                value={noteDraft.text}
+                rows={5}
+                maxLength={5000}
+                onChange={(e) => setNoteDraft({ ...noteDraft, text: e.target.value })}
+                placeholder="e.g. Pay on the 20th of every month in the BRImo app. Customer ID 1234567."
+                aria-label="Note text"
+              />
+              <div className="instruction-actions">
+                <button className="btn primary" type="submit" disabled={savingNote || !noteDraft.text.trim()}>
+                  {savingNote ? 'Saving…' : 'Save note'}
+                </button>
+                <button className="btn ghost" type="button" onClick={() => setNoteDraft(null)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button className="btn ghost new-note" onClick={() => setNoteDraft({ title: '', text: '' })}>
+              New note
+            </button>
+          )}
         </section>
 
         <section className="section">

@@ -36,6 +36,18 @@ const dot = (a: Float32Array, b: Float32Array) => {
 // Reciprocal rank fusion: a passage near the top of either ranking rises; k damps the top ranks.
 const FUSION_K = 60
 
+export interface RetrieveOptions {
+  /**
+   * Only passages that match the question (a shared word, or a meaning at least this similar);
+   * nothing at all when none does. For notes, which are consulted in every chat.
+   */
+  onlyMatches?: { minSimilarity: number; maxPassages: number }
+  /** First line of the context, before the passages. */
+  heading?: string
+  /** Last line, telling the AI how to use them. */
+  instruction?: string
+}
+
 export interface Retrieval {
   /** Facts for the AI's system prompt. */
   context: string
@@ -50,7 +62,13 @@ const label = (p: Passage) => `${p.docName} ${p.page !== null ? `p. ${p.page}` :
  * the ranking by meaning when there is a question vector and the documents are indexed. A
  * question with no topic words, e.g. "summarise this", gets the start of each document instead.
  */
-export function retrieve(docs: DocRecord[], question: string, maxChars: number, questionVector?: Float32Array): Retrieval {
+export function retrieve(
+  docs: DocRecord[],
+  question: string,
+  maxChars: number,
+  questionVector?: Float32Array,
+  options: RetrieveOptions = {},
+): Retrieval {
   const passages: Passage[] = docs.flatMap((doc) =>
     doc.chunks.map((chunk, i) => ({
       docName: doc.name,
@@ -94,6 +112,13 @@ export function retrieve(docs: DocRecord[], question: string, maxChars: number, 
     }
     ranked = [...fused.entries()].sort((a, b) => b[1] - a[1]).map(([order]) => scored[order])
   }
+  if (options.onlyMatches) {
+    const { minSimilarity, maxPassages } = options.onlyMatches
+    const similar = new Set(byMeaning.filter((s) => s.similarity >= minSimilarity).map((s) => s.order))
+    ranked = (terms.length ? ranked : [])
+      .filter((s) => s.score > 0 || similar.has(s.order))
+      .slice(0, maxPassages)
+  }
   const picked: Passage[] = []
   let used = 0
   for (const { passage } of ranked) {
@@ -105,9 +130,9 @@ export function retrieve(docs: DocRecord[], question: string, maxChars: number, 
   const lines = picked.map((p, i) => `[${i + 1}] ${label(p)}: ${p.text}`)
   return {
     context: [
-      "Excerpts from the user's documents:",
+      options.heading ?? "Excerpts from the user's documents:",
       ...lines,
-      'Answer using only these excerpts and cite them like [1]. If they do not contain the answer, say so.',
+      options.instruction ?? 'Answer using only these excerpts and cite them like [1]. If they do not contain the answer, say so.',
     ].join('\n'),
     sources: picked.map(label),
   }

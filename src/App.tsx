@@ -23,11 +23,22 @@ import {
 } from './settings'
 import SetupView, { type LoadingState } from './SetupView'
 import { embedTexts, prepareEmbeddings } from './ai/embeddings'
-import { extractChunks } from './docs/extract'
+import { chunk, extractChunks } from './docs/extract'
 import { readMemory, withFact, writeMemory, type MemoryItem } from './memory'
 import { onShared, type Shared } from './shareTarget'
 import { checkForUpdate, dismissUpdate, type AppUpdate } from './updates'
-import { deleteDocument, getDocuments, listDocuments, saveDocument, summarize, type DocSummary } from './docs/store'
+import {
+  deleteDocument,
+  deleteNote,
+  getDocuments,
+  listDocuments,
+  listNotes,
+  saveDocument,
+  saveNote,
+  summarize,
+  type DocSummary,
+  type Note,
+} from './docs/store'
 
 // MapLibre is large, so the map only loads when it is opened.
 const MapView = lazy(() => import('./map/MapView'))
@@ -100,6 +111,31 @@ export default function App() {
   }, [])
 
   const refreshDocuments = () => listDocuments().then(setAllDocs)
+  const [notes, setNotes] = useState<Note[]>([])
+  useEffect(() => {
+    listNotes().then(setNotes)
+  }, [])
+
+  /** Saves a new or edited note, indexed for search by meaning when that is on. */
+  async function storeNote(draft: { id?: string; title: string; text: string }) {
+    const text = draft.text.trim()
+    const title = draft.title.trim() || text.split('\n')[0].slice(0, 60)
+    const chunks = chunk(`${title}. ${text}`, null)
+    let vectors: Float32Array[] | undefined
+    if (replySettings.docSearch === 'meaning') {
+      vectors = await embedTexts(
+        chunks.map((c) => c.text),
+        'passage',
+      ).catch(() => undefined)
+    }
+    await saveNote({ id: draft.id ?? crypto.randomUUID(), title, text, updatedAt: Date.now(), chunks, ...(vectors ? { vectors } : {}) })
+    setNotes(await listNotes())
+  }
+
+  async function removeNote(id: string) {
+    await deleteNote(id)
+    setNotes(await listNotes())
+  }
   useEffect(() => {
     refreshDocuments()
   }, [])
@@ -158,6 +194,10 @@ export default function App() {
       for (const [i, doc] of pending.entries()) {
         setMeaningStatus({ text: `Indexing ${doc.name} (${i + 1} of ${pending.length})…` })
         await saveDocument({ ...doc, vectors: await embedTexts(doc.chunks.map((c) => c.text), 'passage') })
+      }
+      for (const note of (await listNotes()).filter((n) => !n.vectors)) {
+        setMeaningStatus({ text: `Indexing your note "${note.title}"…` })
+        await saveNote({ ...note, vectors: await embedTexts(note.chunks.map((c) => c.text), 'passage') })
       }
       setMeaningStatus({ text: 'Search by meaning is ready.' })
     } catch {
@@ -393,6 +433,9 @@ export default function App() {
       meaningStatus={meaningStatus}
       memory={memory}
       onMemoryChange={changeMemory}
+      notes={notes}
+      onSaveNote={storeNote}
+      onDeleteNote={removeNote}
       onDeleteDocument={removeDocument}
       onOpen={openModel}
       onDelete={removeModel}

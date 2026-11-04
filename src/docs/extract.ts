@@ -26,7 +26,7 @@ async function pdfPages(file: File): Promise<string[]> {
 }
 
 /** Splits text into passages of about CHUNK_CHARS characters, at sentence boundaries. */
-function chunk(text: string, page: number | null): DocChunk[] {
+export function chunk(text: string, page: number | null): DocChunk[] {
   const sentences = text
     .replace(/\s+/g, ' ')
     .trim()

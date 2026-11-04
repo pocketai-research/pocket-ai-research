@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Small sizes of the logo (favicon, header): the phone in the jeans pocket, without the hand. -->
+  <rect width="64" height="64" rx="14" fill="#f97316"/>
+  <g transform="rotate(-9 32 27)">
+    <rect x="21.5" y="6.5" width="21" height="36" rx="4.5" fill="#1f2937"/>
+    <path d="M32 13.5c.8 4.2 2.1 5.5 6.3 6.3-4.2.8-5.5 2.1-6.3 6.3-.8-4.2-2.1-5.5-6.3-6.3 4.2-.8 5.5-2.1 6.3-6.3z" fill="#fbbf24"/>
+  </g>
+  <path d="M10 32h44v13c0 7.5-9 12-22 14-13-2-22-6.5-22-14z" fill="#2f5d97"/>
+  <path d="M14.5 37h35v7.5c0 5.2-7 8.8-17.5 10.5-10.5-1.7-17.5-5.3-17.5-10.5z" fill="none" stroke="#fb923c" stroke-width="2" stroke-dasharray="2.6 2.2"/>
+</svg>

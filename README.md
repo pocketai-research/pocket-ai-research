@@ -114,6 +114,10 @@ Downloads follow [OpenFreeMap's terms](https://openfreemap.org/tos/) for in-app 
 
 See [docs/CONCEPT.md](docs/CONCEPT.md) for the full concept and usage guide.
 
+## Logo
+
+A hand putting a phone with an AI spark into a jeans pocket: the AI that lives in your pocket. The sources are in [design/](design): [logo.svg](design/logo.svg) for app icons, [logo-small.svg](design/logo-small.svg) (also [public/favicon.svg](public/favicon.svg)) for 32 px and below, where the hand would be lost, and [logo-bleed.svg](design/logo-bleed.svg) for icons that launchers crop (the web app's maskable icon and Android's adaptive icon), with the drawing inside the safe zone and the arm running off the edge. The PNG icons in public/icons and android/app/src/main/res are rendered from these files.
+
 ## Development
 
 Requirements: Node.js 24 or newer.

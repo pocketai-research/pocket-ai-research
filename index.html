@@ -8,6 +8,14 @@
     <link rel="icon" type="image/png" sizes="64x64" href="./favicon.png" />
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
     <title>Pocket Ai Research</title>
+    <script>
+      // The theme and text size chosen on the start page, applied before the first paint (see src/appearance.ts).
+      try {
+        var look = JSON.parse(localStorage.getItem('pocket-ai:appearance') || '{}')
+        if (look.theme === 'light' || look.theme === 'dark') document.documentElement.dataset.theme = look.theme
+        if (look.textSize === 'large' || look.textSize === 'larger') document.documentElement.dataset.text = look.textSize
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

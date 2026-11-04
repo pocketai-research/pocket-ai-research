@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { EMBEDDING_MODEL } from './ai/embeddings'
+import { readAppearance, saveAppearance, type Appearance } from './appearance'
 import { describeSummary, exportBackup, importBackup } from './backup'
 import type { ModelOption } from './ai/models'
 import Brand, { REPO_URL } from './Brand'
@@ -101,6 +102,12 @@ export default function SetupView(props: SetupViewProps) {
   const [savingNote, setSavingNote] = useState(false)
   const [newFact, setNewFact] = useState('')
   const [gpuAvailable, setGpuAvailable] = useState(false)
+  const [appearance, setAppearance] = useState(readAppearance)
+
+  function changeAppearance(next: Appearance) {
+    saveAppearance(next)
+    setAppearance(next)
+  }
   // Measured after the first paint: the test keeps the CPU busy for about 0.75 s the first time.
   const [score, setScore] = useState<number | null>(null)
   useEffect(() => {
@@ -489,6 +496,32 @@ export default function SetupView(props: SetupViewProps) {
           <button className="btn primary" onClick={onShowMap}>
             Open map
           </button>
+        </section>
+
+        <section className="section">
+          <h2>Appearance</h2>
+          <div className="settings">
+            <Choice
+              label="Theme"
+              value={appearance.theme}
+              options={[
+                ['system', 'Same as device'],
+                ['light', 'Light'],
+                ['dark', 'Dark'],
+              ]}
+              onChange={(theme) => changeAppearance({ ...appearance, theme })}
+            />
+            <Choice
+              label="Text size"
+              value={appearance.textSize}
+              options={[
+                ['normal', 'Normal'],
+                ['large', 'Large'],
+                ['larger', 'Larger'],
+              ]}
+              onChange={(textSize) => changeAppearance({ ...appearance, textSize })}
+            />
+          </div>
         </section>
 
         <section className="section">

@@ -15,8 +15,9 @@
   color-scheme: light dark;
 }
 
+/* Dark follows the device unless Light or Dark is chosen on the start page (data-theme, src/appearance.ts). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #070d15;
     --surface: #0e1621;
     --text: #e7ecf2;
@@ -30,6 +31,36 @@
     --warn: #fbbf24;
     --unknown: #94a3b8;
   }
+}
+
+/* The same colours as above, for Dark chosen by hand: keep the two lists the same. */
+:root[data-theme='dark'] {
+  --bg: #070d15;
+  --surface: #0e1621;
+  --text: #e7ecf2;
+  --muted: #93a0b0;
+  --border: #1c2633;
+  --accent: #fb923c;
+  --accent-soft: #3a1d0b;
+  --on-accent: #1c0b02;
+  --danger: #f87171;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --unknown: #94a3b8;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+/* Text size chosen on the start page. Font sizes below are in rem, so they all follow this. */
+:root[data-text='large'] {
+  font-size: 112.5%;
+}
+
+:root[data-text='larger'] {
+  font-size: 125%;
 }
 
 * {
@@ -75,11 +106,11 @@ a {
   align-items: center;
   gap: 10px;
   font-weight: 700;
-  font-size: 17px;
+  font-size: 1.0625rem;
 }
 
 .badge {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 999px;
@@ -95,7 +126,7 @@ a {
 
 .eyebrow {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -113,7 +144,7 @@ h1 {
 .lead {
   margin: 0 0 24px;
   max-width: 60ch;
-  font-size: 18px;
+  font-size: 1.125rem;
   color: var(--muted);
 }
 
@@ -123,7 +154,7 @@ h1 {
   padding: 8px 14px;
   border: 1px dashed var(--border);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--muted);
 }
 
@@ -135,7 +166,7 @@ h1 {
 
 h2 {
   margin: 0 0 6px;
-  font-size: 22px;
+  font-size: 1.375rem;
 }
 
 .section-intro {
@@ -158,12 +189,12 @@ h2 {
 
 .card h3 {
   margin: 0 0 6px;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .card p {
   margin: 0;
-  font-size: 15px;
+  font-size: 0.9375rem;
   color: var(--muted);
 }
 
@@ -223,7 +254,7 @@ h2 {
 
 .check-note {
   margin: 2px 0 0;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--muted);
 }
 
@@ -233,7 +264,7 @@ h2 {
   border: 1px solid transparent;
   border-radius: 10px;
   font: inherit;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -313,7 +344,7 @@ a.btn {
 }
 
 .toggle small {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--muted);
 }
 
@@ -345,7 +376,7 @@ a.btn {
   background: var(--bg);
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
   cursor: pointer;
 }
 
@@ -372,7 +403,7 @@ a.btn {
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--bg);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .doc-chip.muted {
@@ -391,13 +422,13 @@ a.btn {
   border: 0;
   background: none;
   color: var(--muted);
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1;
   cursor: pointer;
 }
 
 .doc-error {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--danger);
 }
 
@@ -407,7 +438,7 @@ a.btn {
 }
 
 .sources {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -430,7 +461,7 @@ a.btn {
   background: none;
   color: var(--muted);
   font: inherit;
-  font-size: 12px;
+  font-size: 0.75rem;
   cursor: pointer;
 }
 
@@ -457,7 +488,7 @@ a.btn {
 .model-head {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--muted);
 }
 
@@ -474,7 +505,7 @@ a.btn {
 
 .card .ready {
   flex: none;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--ok);
 }
 
@@ -482,7 +513,7 @@ a.btn {
   display: flex;
   justify-content: space-between;
   margin-bottom: 6px;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -531,7 +562,7 @@ a.btn {
 
 .topbar-actions .btn {
   padding: 6px 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .messages {
@@ -567,7 +598,7 @@ a.btn {
   border-radius: 12px;
   color: var(--text);
   font: inherit;
-  font-size: 15px;
+  font-size: 0.9375rem;
   cursor: pointer;
 }
 
@@ -629,7 +660,7 @@ a.btn {
 }
 
 .meta {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -671,7 +702,7 @@ a.btn {
 
 .disclaimer {
   margin: 6px auto 0;
-  font-size: 12px;
+  font-size: 0.75rem;
   text-align: center;
   color: var(--muted);
 }
@@ -708,7 +739,7 @@ a.btn {
 .markdown h3,
 .markdown h4 {
   margin: 14px 0 6px;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .markdown code {
@@ -855,7 +886,7 @@ a.btn {
 }
 
 .chat-date {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--muted);
 }
 
@@ -873,7 +904,7 @@ a.btn {
 }
 
 .map-title span {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--muted);
 }
 
@@ -902,7 +933,7 @@ a.btn {
   border-radius: 10px;
   background: var(--surface);
   box-shadow: 0 2px 10px rgb(0 0 0 / 0.15);
-  font-size: 14px;
+  font-size: 0.875rem;
   text-align: center;
 }
 
@@ -943,7 +974,7 @@ a.btn {
   background: none;
   color: var(--muted);
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -1001,12 +1032,12 @@ a.btn {
 
 .region-list small,
 .area-info small {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--muted);
 }
 
 .breadcrumb {
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.7;
 }
 
@@ -1032,23 +1063,23 @@ a.btn {
 
 .muted {
   margin: 0;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--muted);
 }
 
 .muted.small {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .download-card .ready {
   margin: 0;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--ok);
 }
 
 .list-title {
   margin: 6px 0 0;
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 .area-list {
@@ -1105,7 +1136,7 @@ a.btn {
 
 .suggestions.start .suggestion {
   padding: 6px 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .answer-card {
@@ -1159,7 +1190,7 @@ a.btn {
   background: none;
   color: var(--accent);
   font: inherit;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -1195,7 +1226,7 @@ a.btn {
   background: none;
   color: var(--muted);
   font: inherit;
-  font-size: 14px;
+  font-size: 0.875rem;
   cursor: pointer;
 }
 
@@ -1221,7 +1252,7 @@ a.btn {
 
 .route-steps li small {
   display: block;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--muted);
 }
 
@@ -1235,7 +1266,7 @@ a.btn {
   border-radius: 50%;
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -1246,7 +1277,7 @@ a.btn {
 }
 
 .place-info small {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--muted);
 }
 
@@ -1269,12 +1300,12 @@ a.btn {
   margin-top: 24px;
   padding: 24px 0 40px;
   border-top: 1px solid var(--border);
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--muted);
 }
 
 .model-card .attribution {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -1293,7 +1324,7 @@ a.btn {
 
 .voice-status {
   margin: 0 auto 8px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--accent);
 }
 
@@ -1334,7 +1365,7 @@ a.btn {
   border-radius: 50%;
   background: var(--text);
   color: var(--bg);
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1;
   cursor: pointer;
 }
@@ -1369,7 +1400,7 @@ a.btn {
   background: var(--bg);
   color: var(--muted);
   font: inherit;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -1397,7 +1428,7 @@ a.btn {
 }
 
 .instructions-panel label {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
@@ -1420,7 +1451,7 @@ a.btn {
 
 .instruction-presets .suggestion {
   padding: 5px 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .instruction-actions {
@@ -1434,7 +1465,7 @@ a.btn {
   margin-bottom: 8px;
   padding: 8px 10px;
   border-left: 3px solid var(--border);
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--muted);
 }
 
@@ -1505,7 +1536,7 @@ a.btn {
 
 .emergency h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 1.25rem;
   color: var(--danger);
 }
 
@@ -1517,7 +1548,7 @@ a.btn {
 
 .emergency h4 {
   margin: 0;
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 .emergency .small {
@@ -1547,13 +1578,13 @@ a.btn {
 }
 
 .sos-call strong {
-  font-size: 20px;
+  font-size: 1.25rem;
   color: var(--danger);
   font-variant-numeric: tabular-nums;
 }
 
 .sos-call span {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--muted);
 }
 
@@ -1571,12 +1602,12 @@ a.btn {
 }
 
 .sos-coords strong {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-variant-numeric: tabular-nums;
 }
 
 .sos-coords span {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--muted);
 }
 
@@ -1585,7 +1616,7 @@ a.btn {
   align-items: center;
   gap: 10px;
   margin: 0;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .sos-compass svg {
@@ -1613,7 +1644,7 @@ a.btn {
   background: none;
   color: var(--muted);
   font: inherit;
-  font-size: 20px;
+  font-size: 1.25rem;
   line-height: 1;
   cursor: pointer;
 }
@@ -1674,7 +1705,7 @@ a.btn {
 
 .template-menu .suggestion {
   padding: 5px 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .template-menu .suggestion[aria-pressed='true'] {
@@ -1689,13 +1720,13 @@ a.btn {
   border-radius: 999px;
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
 .model-card .speed {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .model-head {
@@ -1815,14 +1846,14 @@ a.btn {
 
 .quiz-progress {
   margin: 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--muted);
 }
 
 .quiz-question {
   margin: 0;
-  font-size: 19px;
+  font-size: 1.1875rem;
   line-height: 1.35;
 }
 
@@ -1859,7 +1890,7 @@ a.btn {
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 700;
-  font-size: 13px;
+  font-size: 0.8125rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1917,7 +1948,7 @@ a.btn {
   background: var(--bg);
   color: var(--text);
   font: inherit;
-  font-size: 17px;
+  font-size: 1.0625rem;
   line-height: 1.4;
   text-align: left;
   cursor: pointer;
@@ -1929,7 +1960,7 @@ a.btn {
 }
 
 .flashcard-label {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -2000,20 +2031,20 @@ a.btn {
 }
 
 .trip-stats dt {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
 .trip-stats dd {
   margin: 2px 0 0;
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .small-btn {
   padding: 5px 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 /* Phase 4 design polish */
 .topbar {
@@ -2170,10 +2201,38 @@ a.btn {
 }
 
 .chat-snippet {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--muted);
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+/* Large and Larger text: keep tabs on one line, and give the message box a row of its own on phones. */
+
+.tabs {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  :root[data-text] .composer-inner {
+    flex-wrap: wrap;
+  }
+
+  :root[data-text] .composer textarea {
+    flex-basis: 100%;
+    order: -1;
+  }
+
+  :root[data-text] .composer .btn {
+    margin-left: auto;
+  }
 }

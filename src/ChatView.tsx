@@ -25,6 +25,7 @@ import {
   StopIcon,
 } from './icons'
 import Markdown from './Markdown'
+import QuizPanel from './QuizPanel'
 import { factToRemember } from './memory'
 import { DETAIL_PHOTO_SIZE, PHOTO_SIZE, photoToDataUrl } from './photo'
 import type { Shared } from './shareTarget'
@@ -137,6 +138,7 @@ export default function ChatView(props: ChatViewProps) {
   const voiceChatRef = useRef(false)
   const [instructionsOpen, setInstructionsOpen] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
+  const [quizOpen, setQuizOpen] = useState(false)
   const [template, setTemplate] = useState<Template | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [instructionsDraft, setInstructionsDraft] = useState('')
@@ -483,6 +485,10 @@ export default function ChatView(props: ChatViewProps) {
         </div>
       </header>
 
+      {quizOpen && (
+        <QuizPanel documents={documents} language={replySettings.language} onClose={() => setQuizOpen(false)} />
+      )}
+
       {historyOpen && (
         <ChatHistory
           currentId={chatId}
@@ -737,6 +743,17 @@ export default function ChatView(props: ChatViewProps) {
           >
             {instructions ? 'Instructions on' : 'Instructions'}
           </button>
+          {documents.length > 0 && (
+            <button
+              type="button"
+              className="tool-chip"
+              title="Practice questions and flashcards from the attached documents"
+              onClick={() => setQuizOpen(true)}
+              disabled={generating || listening}
+            >
+              Quiz me
+            </button>
+          )}
           {micAvailable && (
             <button
               type="button"

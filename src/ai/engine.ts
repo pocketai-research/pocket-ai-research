@@ -222,6 +222,32 @@ export async function generateReply(
   }
 }
 
+/**
+ * One answer as JSON that matches the schema: llama.cpp turns the schema into a grammar and the
+ * model can only write text that fits it, which small models otherwise often get wrong.
+ */
+export async function generateJson<T>(system: string, prompt: string, schema: object, signal: AbortSignal, maxTokens = 512): Promise<T> {
+  if (!wllama || !loaded) throw new Error('No model is loaded.')
+  markBusy({ modelId: loaded.model.id, phase: 'replying', settings: loaded.settings })
+  try {
+    const response = await wllama.createChatCompletion({
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: maxTokens,
+      temperature: 0.4,
+      top_p: 0.9,
+      response_format: { type: 'json_schema', json_schema: { name: 'answer', schema, strict: true } },
+      ...(loaded.model.canThink ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+      abortSignal: signal,
+    })
+    return JSON.parse(response.choices[0]?.message.content ?? '')
+  } finally {
+    clearBusy()
+  }
+}
+
 // Rough token count (about 3 characters per token, on the safe side for Indonesian text).
 const estimateTokens = (text: string) => Math.ceil(text.length / 3) + 4
 // A photo becomes 256 tokens per 448 px tile once the projector has encoded it (see src/photo.ts).

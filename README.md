@@ -121,7 +121,7 @@ See [docs/CONCEPT.md](docs/CONCEPT.md) for the full concept and usage guide.
 
 ## Logo
 
-A hand putting a phone with a glowing AI spark into a jeans pocket: the AI that lives in your pocket. The source is the 3D render [design/logo-3d.png](design/logo-3d.png). App icons are a square crop around its frame: the web app and Android icons, the favicon and the header logo; icons that launchers crop to a circle (the maskable web icon and Android's adaptive icon) keep the whole frame inside the visible circle, on the image's own dark background (#050C14). Android's splash screen shows the whole image, wordmark included. At 16 px (a browser tab) the detailed render reads only as the orange frame.
+A hand putting a phone with a glowing AI spark into a jeans pocket: the AI that lives in your pocket. The source is the 3D render [design/logo-3d.png](design/logo-3d.png). App icons are its frame, cut out along the rounded glass rim with transparent corners: the web app and Android icons, the favicon and the header logo; icons that launchers crop to a circle (the maskable web icon and Android's round and adaptive icons) keep the whole frame inside the visible circle, on the image's dark background (#050C14). Android's splash screen shows the whole image, wordmark included, its edges faded into that background. At 16 px (a browser tab) the detailed render reads only as the orange frame.
 
 ## Development
 

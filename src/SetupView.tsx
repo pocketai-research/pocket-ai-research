@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { EMBEDDING_MODEL } from './ai/embeddings'
+import { describeSummary, exportBackup, importBackup } from './backup'
 import type { ModelOption } from './ai/models'
 import Brand, { REPO_URL } from './Brand'
 import { useInstallPrompt } from './pwa'
@@ -36,6 +37,8 @@ interface SetupViewProps {
   notes: Note[]
   onSaveNote: (draft: { id?: string; title: string; text: string }) => Promise<void>
   onDeleteNote: (id: string) => void
+  /** Reloads documents, notes and memory after a backup was imported. */
+  onDataImported: () => void
   onDeleteDocument: (doc: DocSummary) => void
   onOpen: (model: ModelOption) => void
   onDelete: (model: ModelOption) => void
@@ -82,7 +85,17 @@ function LoadingProgress({ progress, cached }: { progress: number; cached: boole
 export default function SetupView(props: SetupViewProps) {
   const { models, downloaded, loading, activeId, error, notice, settings, onSettingsChange, onOpen, onDelete } = props
   const { onBackToChat, onShowMap, replySettings, onReplySettingsChange, documents, onDeleteDocument, banner } = props
-  const { meaningStatus, memory, onMemoryChange, notes, onSaveNote, onDeleteNote } = props
+  const { meaningStatus, memory, onMemoryChange, notes, onSaveNote, onDeleteNote, onDataImported } = props
+  const [backupStatus, setBackupStatus] = useState<{ text: string; error?: boolean } | null>(null)
+
+  async function runBackup(action: () => Promise<string>) {
+    setBackupStatus({ text: 'Working…' })
+    try {
+      setBackupStatus({ text: await action() })
+    } catch (err) {
+      setBackupStatus({ text: err instanceof Error ? err.message : String(err), error: true })
+    }
+  }
   // The note being written or edited (no id yet for a new one).
   const [noteDraft, setNoteDraft] = useState<{ id?: string; title: string; text: string } | null>(null)
   const [savingNote, setSavingNote] = useState(false)
@@ -119,17 +132,22 @@ export default function SetupView(props: SetupViewProps) {
 
       <main className="container">
         <section className="hero">
-          <p className="eyebrow">Offline AI that runs on your device</p>
-          <h1>An AI assistant that lives in your pocket.</h1>
-          <p className="lead">
-            Pick a model and download it once. After that, Pocket Ai Research works with no internet, no account, and nothing
-            leaving your device.
-          </p>
-          {install && (
-            <button className="btn primary install" onClick={install}>
-              Install app
-            </button>
-          )}
+          <div className="hero-inner">
+            <img className="hero-logo" src={`${import.meta.env.BASE_URL}icons/icon-512.png`} alt="" width={88} height={88} />
+            <div className="hero-copy">
+              <p className="eyebrow">Offline AI that runs on your device</p>
+              <h1>An AI assistant that lives in your pocket.</h1>
+              <p className="lead">
+                Pick a model and download it once. After that, Pocket Ai Research works with no internet, no account, and nothing
+                leaving your device.
+              </p>
+              {install && (
+                <button className="btn primary install" onClick={install}>
+                  Install app
+                </button>
+              )}
+            </div>
+          </div>
         </section>
 
         {banner}
@@ -157,7 +175,10 @@ export default function SetupView(props: SetupViewProps) {
               const successor = m.replacedBy && models.find((other) => other.id === m.replacedBy)
               const speed = score !== null && !m.replacedBy ? estimateSpeed(m, score, threads) : null
               return (
-                <article className="card model-card" key={m.id}>
+                <article
+                  className={`card model-card${recommended === m ? ' recommended-card' : ''}${activeId === m.id ? ' active-card' : ''}`}
+                  key={m.id}
+                >
                   <div className="model-head">
                     <span className="tier">{m.tier}</span>
                     {recommended === m && <span className="recommended">Recommended for this device</span>}
@@ -416,6 +437,46 @@ export default function SetupView(props: SetupViewProps) {
                 </li>
               ))}
             </ul>
+          )}
+        </section>
+
+        <section className="section">
+          <h2>Backup</h2>
+          <p className="section-intro">
+            Save your chats (with their photos), documents, notes, memory, saved places and trips in one file, to keep or to
+            move to another phone. Models and offline maps are not included: download them again on the new device.
+          </p>
+          <div className="backup-actions">
+            <button
+              className="btn primary"
+              onClick={() => runBackup(async () => `Backup saved: ${describeSummary(await exportBackup())}.`)}
+            >
+              Export backup
+            </button>
+            <label className="btn ghost">
+              Import backup
+              <input
+                type="file"
+                accept="application/json,.json"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  e.target.value = ''
+                  if (file) {
+                    runBackup(async () => {
+                      const summary = await importBackup(file)
+                      onDataImported()
+                      return `Imported ${describeSummary(summary)}. Open the chat list to see the chats.`
+                    })
+                  }
+                }}
+              />
+            </label>
+          </div>
+          {backupStatus && (
+            <p className={backupStatus.error ? 'alert' : 'muted'} role="status">
+              {backupStatus.text}
+            </p>
           )}
         </section>
 

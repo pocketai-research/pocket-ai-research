@@ -436,6 +436,13 @@ export default function App() {
       notes={notes}
       onSaveNote={storeNote}
       onDeleteNote={removeNote}
+      onDataImported={() => {
+        refreshDocuments()
+        listNotes().then(setNotes)
+        setMemory(readMemory())
+        // Imported documents and notes come without vectors: index them again for search by meaning.
+        if (replySettings.docSearch === 'meaning') prepareMeaningSearch()
+      }}
       onDeleteDocument={removeDocument}
       onOpen={openModel}
       onDelete={removeModel}

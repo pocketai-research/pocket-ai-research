@@ -182,5 +182,5 @@ Keep the keystore and its password backed up outside the repository. Never commi
 - [x] **Read photos**: ask about a photo with the Vision model (InternVL3 1B)
 - [x] **Voice**: speak messages and have replies read aloud
 - [x] **Phase 3b**: installable offline web app (PWA) and multi-threading on GitHub Pages
-- [ ] **Phase 4**: custom domain and design polish
-- [ ] **Phase 5**: ask your documents, task templates, voice input
+- [x] **Phase 4**: design polish in the logo's orange and denim navy
+- [x] **Phase 5**: ask your documents, task templates, voice input

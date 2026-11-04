@@ -504,6 +504,7 @@ export default function ChatView(props: ChatViewProps) {
           {banner}
           {messages.length === 0 ? (
             <div className="empty">
+              <img className="empty-logo" src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" width={64} height={64} />
               <h2>{documents.length ? 'Ask about your document.' : 'Ask me anything.'}</h2>
               <p className="section-intro">
                 {documents.length

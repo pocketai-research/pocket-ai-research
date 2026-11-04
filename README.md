@@ -64,6 +64,10 @@ Looking at a photo is slow on a CPU: about 2 minutes for the first answer on a 4
 - **Speak a message:** tap the microphone in the chat box, speak, and pause; the words are sent as a message. In the Android app this uses the phone's own speech recogniser through [@capacitor-community/speech-recognition](https://github.com/capacitor-community/speech-recognition); it works offline once the language's offline speech pack is installed (Settings → Google → Voice). In the browser it uses the Web Speech API, which in Chrome sends audio to Google and needs internet.
 - **Read replies aloud:** tap the speaker under a reply, or turn on **Read replies aloud** under AI replies. It uses the device's voices ([@capacitor-community/text-to-speech](https://github.com/capacitor-community/text-to-speech) on Android, `speechSynthesis` on the web), reads Markdown as plain sentences, and picks Indonesian or English from the reply language setting (or guesses it from the text) ([src/voice.ts](src/voice.ts)).
 
+## Share to Pocket AI
+
+Pick **Share → Pocket Ai Research** in another app (WhatsApp, a browser, the gallery, a file manager) to start a new chat with what you shared: text goes into the message box (ready for a template such as Summarise), a PDF or text file is attached as a document, and a photo waits for the Vision model. In the Android app this is a share intent handled by a small native plugin ([SharedContentPlugin.java](android/app/src/main/java/com/pocketairesearch/app/SharedContentPlugin.java), files up to 25 MB); in the installed web app it is the Web Share Target API, received by the service worker ([src/sw.js](src/sw.js), [src/shareTarget.ts](src/shareTarget.ts)).
+
 ## Ask your documents
 
 Tap the paperclip in a chat to attach a PDF, TXT or Markdown file, then ask about it. Everything happens on the device:

@@ -1,5 +1,6 @@
 package com.pocketairesearch.app;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebResourceRequest;
@@ -14,7 +15,11 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        registerPlugin(SharedContentPlugin.class);
         super.onCreate(savedInstanceState);
+        // Opened through the share sheet. A recreated activity (after a WebView crash) keeps its
+        // old intent, which was handled already.
+        if (savedInstanceState == null) sharedContent().receive(getIntent(), false);
 
         // Cross-origin isolation lets the AI engine (wllama) use several CPU threads
         // through SharedArrayBuffer. The web build gets the same headers from vite.config.ts.
@@ -45,5 +50,17 @@ public class MainActivity extends BridgeActivity {
                 }
             }
         );
+    }
+
+    /** Something shared to the app while it is running (singleTask brings this activity back). */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        sharedContent().receive(intent, true);
+    }
+
+    private SharedContentPlugin sharedContent() {
+        return (SharedContentPlugin) bridge.getPlugin("SharedContent").getInstance();
     }
 }

@@ -38,8 +38,27 @@ async function respond(request) {
   }
 }
 
+// Web Share Target (the manifest's share_target): keep what was shared for the app, which reads
+// it from this cache when it opens with ?shared=1 (src/shareTarget.ts).
+const SHARE_CACHE = 'pocket-ai-shared'
+
+async function receiveShare(request) {
+  const form = await request.formData()
+  const cache = await caches.open(SHARE_CACHE)
+  const text = ['title', 'text', 'url'].map((name) => form.get(name)).filter((value) => typeof value === 'string' && value)
+  if (text.length) await cache.put('text', new Response(text.join('\n')))
+  const file = form.get('file')
+  if (file instanceof File && file.size) {
+    await cache.put('file', new Response(file, { headers: { 'Content-Type': file.type, 'X-File-Name': encodeURIComponent(file.name) } }))
+  }
+  return Response.redirect(new URL('./?shared=1', self.registration.scope).href, 303)
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event
-  if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return
+  const url = new URL(request.url)
+  if (url.origin !== self.location.origin) return
+  if (request.method === 'POST' && url.pathname.endsWith('/share-target')) return event.respondWith(receiveShare(request))
+  if (request.method !== 'GET') return
   event.respondWith(respond(request))
 })

@@ -24,6 +24,7 @@ import {
 import SetupView, { type LoadingState } from './SetupView'
 import { embedTexts, prepareEmbeddings } from './ai/embeddings'
 import { extractChunks } from './docs/extract'
+import { onShared, type Shared } from './shareTarget'
 import { checkForUpdate, dismissUpdate, type AppUpdate } from './updates'
 import { deleteDocument, getDocuments, listDocuments, saveDocument, summarize, type DocSummary } from './docs/store'
 
@@ -82,6 +83,10 @@ export default function App() {
   const [meaningStatus, setMeaningStatus] = useState<{ text: string; error?: boolean } | null>(null)
   const [instructions, setInstructions] = useState('')
   const [update, setUpdate] = useState<AppUpdate | null>(null)
+  // Text or a photo shared from another app, waiting for the chat to take it.
+  const [shared, setShared] = useState<Shared | null>(null)
+  // A share opens a new chat, so the last chat must not be restored over it.
+  const sharedArrived = useRef(false)
 
   useEffect(() => {
     checkForUpdate().then(setUpdate)
@@ -159,9 +164,31 @@ export default function App() {
   // Continue the most recent chat, so closing the app (or Android stopping it) loses nothing.
   useEffect(() => {
     listConversations().then((list) => {
-      if (list[0]) showConversation(list[0])
+      if (list[0] && !sharedArrived.current) showConversation(list[0])
     })
   }, [])
+
+  // Shared from another app: a new chat with the document attached, or the text or photo ready to send.
+  useEffect(
+    () =>
+      onShared((item) => {
+        sharedArrived.current = true
+        setShared(item)
+      }),
+    [],
+  )
+
+  useEffect(() => {
+    if (!shared) return
+    startNewChat()
+    if (shared.error) setAttachStatus({ error: shared.error })
+    const document = shared.file && !shared.file.type.startsWith('image/') ? shared.file : null
+    if (document) attachDocument(document)
+    if (!shared.text && !shared.file?.type.startsWith('image/')) setShared(null)
+    if (active) setView('chat')
+    else if (document) setNotice(`${document.name} is attached to a new chat. Open a model to ask about it.`)
+    // Runs once per share.
+  }, [shared?.id])
 
   const snapshotOf = (entries: ChatEntry[], docs: DocSummary[], text: string) =>
     JSON.stringify([entries, docs.map((d) => d.id), text])
@@ -317,6 +344,8 @@ export default function App() {
         instructions={instructions}
         onInstructionsChange={setInstructions}
         banner={banner}
+        incoming={shared}
+        onIncomingUsed={() => setShared(null)}
         chatId={chatMeta.id}
         messages={messages}
         setMessages={setMessages}

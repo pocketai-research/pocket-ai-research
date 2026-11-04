@@ -26,6 +26,7 @@ import {
 } from './icons'
 import Markdown from './Markdown'
 import { DETAIL_PHOTO_SIZE, PHOTO_SIZE, photoToDataUrl } from './photo'
+import type { Shared } from './shareTarget'
 import type { ReplySettings } from './settings'
 import { canListen, listen, speak, speechLanguage, stopListening, stopSpeaking } from './voice'
 
@@ -38,6 +39,9 @@ interface ChatViewProps {
   onInstructionsChange: (instructions: string) => void
   /** Shown above the messages, e.g. that a new version of the app is available. */
   banner?: ReactNode
+  /** Text or a photo shared from another app, to put in the message box. */
+  incoming: Shared | null
+  onIncomingUsed: () => void
   chatId: string
   messages: ChatEntry[]
   setMessages: Dispatch<SetStateAction<ChatEntry[]>>
@@ -107,7 +111,7 @@ const toHistory = (entries: ChatEntry[]): ChatMessage[] =>
 export default function ChatView(props: ChatViewProps) {
   const { loaded, replySettings, chatId, messages, setMessages, onShowModels, onShowMap, onNewChat, onOpenChat } = props
   const { onDeleteChat, documents, attachStatus, onAttach, onDetach, onUseVisionModel } = props
-  const { onReplySettingsChange, instructions, onInstructionsChange, banner } = props
+  const { onReplySettingsChange, instructions, onInstructionsChange, banner, incoming, onIncomingUsed } = props
   const fileRef = useRef<HTMLInputElement>(null)
   const photoRef = useRef<HTMLInputElement>(null)
   // A photo waiting to be sent with the next message (kept with its file so it can be redone in
@@ -134,6 +138,18 @@ export default function ChatView(props: ChatViewProps) {
     canListen().then(setMicAvailable)
     return () => stopSpeaking()
   }, [])
+
+  // A shared photo needs the Vision model: it waits (with the switch offered) until that is open.
+  useEffect(() => {
+    if (!incoming) return
+    if (incoming.text) setInput(incoming.text)
+    if (incoming.file?.type.startsWith('image/')) {
+      if (!loaded.vision) return setPhotoNotice('Photos need the Vision model.')
+      addPhoto(incoming.file)
+    }
+    onIncomingUsed()
+    // Runs once per share, and again when the Vision model opens for a waiting photo.
+  }, [incoming?.id, loaded.vision])
 
   useEffect(() => {
     const list = listRef.current

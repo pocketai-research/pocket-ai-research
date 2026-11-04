@@ -40,6 +40,18 @@ export default defineConfig({
         display: 'standalone',
         theme_color: '#0f766e',
         background_color: '#0b1211',
+        // Lets the installed app appear in the phone's share sheet (handled in src/sw.js).
+        share_target: {
+          action: './share-target',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            title: 'title',
+            text: 'text',
+            url: 'url',
+            files: [{ name: 'file', accept: ['application/pdf', 'text/plain', 'text/markdown', '.md', 'image/*'] }],
+          },
+        },
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },

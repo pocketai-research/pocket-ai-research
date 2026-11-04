@@ -3,7 +3,7 @@ import { EMBEDDING_MODEL } from './ai/embeddings'
 import type { ModelOption } from './ai/models'
 import Brand, { REPO_URL } from './Brand'
 import { useInstallPrompt } from './pwa'
-import { hasWebGPU } from './deviceCheck'
+import { engineThreads, estimateSpeed, hasWebGPU, recommendModel, speedScore } from './deviceCheck'
 import DeviceChecks from './DeviceChecks'
 import type { DocSummary } from './docs/store'
 import { TrashIcon } from './icons'
@@ -78,6 +78,14 @@ export default function SetupView(props: SetupViewProps) {
   const { onBackToChat, onShowMap, replySettings, onReplySettingsChange, documents, onDeleteDocument, banner } = props
   const { meaningStatus } = props
   const [gpuAvailable, setGpuAvailable] = useState(false)
+  // Measured after the first paint: the test keeps the CPU busy for about 0.75 s the first time.
+  const [score, setScore] = useState<number | null>(null)
+  useEffect(() => {
+    const timer = setTimeout(() => setScore(speedScore()), 300)
+    return () => clearTimeout(timer)
+  }, [])
+  const threads = engineThreads(settings)
+  const recommended = score !== null ? recommendModel(models, score, threads) : undefined
   const install = useInstallPrompt()
 
   useEffect(() => {
@@ -137,10 +145,12 @@ export default function SetupView(props: SetupViewProps) {
               const isDownloaded = downloaded?.has(m.url) ?? false
               const isLoading = loading?.modelId === m.id
               const successor = m.replacedBy && models.find((other) => other.id === m.replacedBy)
+              const speed = score !== null && !m.replacedBy ? estimateSpeed(m, score, threads) : null
               return (
                 <article className="card model-card" key={m.id}>
                   <div className="model-head">
                     <span className="tier">{m.tier}</span>
+                    {recommended === m && <span className="recommended">Recommended for this device</span>}
                     <span className="size">{m.size}</span>
                   </div>
                   <h3>{m.name}</h3>
@@ -148,6 +158,11 @@ export default function SetupView(props: SetupViewProps) {
                     {m.description}
                     {successor && ` Replaced by ${successor.name}, which answers better. Delete it to free ${m.size}.`}
                   </p>
+                  {speed !== null && (
+                    <small className="speed">
+                      About {speed < 10 ? speed.toFixed(1) : Math.round(speed)} tokens a second on this device (estimate)
+                    </small>
+                  )}
                   {m.attribution && <small className="attribution">{m.attribution}</small>}
                   {isLoading && loading ? (
                     <LoadingProgress progress={loading.progress} cached={isDownloaded} />

@@ -1,3 +1,6 @@
+import type { ModelOption } from './ai/models'
+import type { EngineSettings } from './settings'
+
 export type CheckStatus = 'ok' | 'warn' | 'unknown'
 
 export interface DeviceCheck {
@@ -84,4 +87,90 @@ export function checkNetwork(online: boolean): DeviceCheck {
 export async function runDeviceChecks(): Promise<DeviceCheck[]> {
   const [gpu, storage] = await Promise.all([checkGpu(), checkStorage()])
   return [checkMemory(), storage, checkThreads(), gpu, checkEngine()]
+}
+
+// ---- Speed test and model recommendation
+
+const SPEED_KEY = 'pocket-ai:speed-v2'
+const SPEED_TTL_MS = 30 * 24 * 60 * 60 * 1000
+/**
+ * The speed test's single-thread score (MFLOPS) on the reference laptop, a 4-core PC where each
+ * model's referenceSpeed was measured with 2 threads (1,330 to 1,480 over six fresh starts).
+ */
+const REFERENCE = { score: 1430, threads: 2 }
+
+/**
+ * A short CPU test: multiplying small float matrices, in MFLOPS on one thread. It tracks how fast the
+ * AI engine's own matrix maths runs, closely enough for a rough estimate. A long warm-up and the
+ * middle of three timings keep it steady (a single short timing varied by 40%).
+ */
+function runSpeedTest() {
+  const n = 96
+  const a = Float32Array.from({ length: n * n }, () => Math.random())
+  const b = Float32Array.from({ length: n * n }, () => Math.random())
+  const c = new Float32Array(n * n)
+  const round = () => {
+    for (let i = 0; i < n; i++) {
+      for (let k = 0; k < n; k++) {
+        const aik = a[i * n + k]
+        for (let j = 0; j < n; j++) c[i * n + j] += aik * b[k * n + j]
+      }
+    }
+  }
+  // Warm up first, so the JavaScript compiler has optimised the loop.
+  for (const start = performance.now(); performance.now() - start < 300; ) round()
+  const timings: number[] = []
+  for (let run = 0; run < 3; run++) {
+    let rounds = 0
+    const start = performance.now()
+    while (performance.now() - start < 150) {
+      round()
+      rounds++
+    }
+    timings.push((rounds * 2 * n * n * n) / ((performance.now() - start) / 1000) / 1e6)
+  }
+  return timings.sort((a, b) => a - b)[1]
+}
+
+/** The single-thread score, measured once and remembered for a month. */
+export function speedScore(): number {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SPEED_KEY) ?? 'null')
+    if (saved && Date.now() - saved.at < SPEED_TTL_MS) return saved.score
+  } catch {
+    // Measure again below.
+  }
+  const score = runSpeedTest()
+  try {
+    localStorage.setItem(SPEED_KEY, JSON.stringify({ score, at: Date.now() }))
+  } catch {
+    // Without storage the test runs on each visit, which is fine.
+  }
+  return score
+}
+
+/** CPU threads the AI engine uses: wllama takes half the cores when the page is cross-origin isolated. */
+export function engineThreads(settings: EngineSettings) {
+  if (settings.singleThread || !crossOriginIsolated) return 1
+  return Math.max(1, Math.floor((navigator.hardwareConcurrency || 2) / 2))
+}
+
+/** Estimated tokens a second for the model on this device; threads help, though less than linearly. */
+export function estimateSpeed(model: ModelOption, score: number, threads: number): number | null {
+  if (!model.referenceSpeed) return null
+  const power = (s: number, t: number) => s * t ** 0.85
+  return (model.referenceSpeed * power(score, threads)) / power(REFERENCE.score, REFERENCE.threads)
+}
+
+/**
+ * The model to suggest: Balanced (the best answers) when the device has the memory and runs it at a
+ * readable pace, otherwise Light.
+ */
+export function recommendModel(models: ModelOption[], score: number, threads: number): ModelOption | undefined {
+  const current = models.filter((m) => !m.replacedBy)
+  const light = current.find((m) => m.tier === 'Light')
+  const balanced = current.find((m) => m.tier === 'Balanced')
+  const memory = nav.deviceMemory
+  if (!balanced || (memory !== undefined && memory < 4)) return light
+  return (estimateSpeed(balanced, score, threads) ?? 0) >= 4 ? balanced : light
 }

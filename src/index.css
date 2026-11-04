@@ -1680,3 +1680,30 @@ a.btn {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* Speed estimate and recommendation on the model cards */
+
+.model-card .recommended {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.model-card .speed {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.model-head {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px 8px;
+}
+
+.model-head .size {
+  margin-left: auto;
+}

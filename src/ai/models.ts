@@ -15,6 +15,8 @@ export interface ModelOption {
   attribution?: string
   /** A model replaced by a better one (its id): listed only while it is still downloaded, to open or delete. */
   replacedBy?: string
+  /** Tokens a second measured on the reference laptop (see src/deviceCheck.ts), to estimate speed on others. */
+  referenceSpeed?: number
 }
 
 // Single-file Q4_K_M GGUFs. In WebAssembly the weights must fit in one allocation, which fails
@@ -34,6 +36,7 @@ export const MODELS: ModelOption[] = [
     // with Qwen2.5 0.5B; 2,048 tokens keep the Light model light.
     contextSize: 2048,
     canThink: true,
+    referenceSpeed: 7.8,
   },
   {
     id: 'gemma3-1b',
@@ -43,6 +46,7 @@ export const MODELS: ModelOption[] = [
     description: 'Best Indonesian and the most natural writing. A little slower than Light.',
     url: 'https://huggingface.co/ggml-org/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf',
     attribution: 'Gemma is provided under and subject to the Gemma Terms of Use (ai.google.dev/gemma/terms).',
+    referenceSpeed: 2.8,
   },
   {
     id: 'qwen3-1.7b',
@@ -54,6 +58,7 @@ export const MODELS: ModelOption[] = [
     // Qwen3 keeps 8 key/value heads, so its context costs about 4x more memory than Qwen2.5's.
     contextSize: 3072,
     canThink: true,
+    referenceSpeed: 3.6,
   },
   {
     id: 'internvl3-1b',
@@ -63,6 +68,7 @@ export const MODELS: ModelOption[] = [
     description: 'Reads photos, including text in them. Use it to ask about pictures.',
     url: 'https://huggingface.co/ggml-org/InternVL3-1B-Instruct-GGUF/resolve/main/InternVL3-1B-Instruct-Q8_0.gguf',
     mmprojUrl: 'https://huggingface.co/ggml-org/InternVL3-1B-Instruct-GGUF/resolve/main/mmproj-InternVL3-1B-Instruct-Q8_0.gguf',
+    referenceSpeed: 6.7,
   },
   {
     id: 'qwen2.5-0.5b',

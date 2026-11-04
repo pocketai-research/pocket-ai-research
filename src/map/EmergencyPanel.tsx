@@ -19,15 +19,9 @@ interface EmergencyPanelProps {
   onClose: () => void
 }
 
-// Indonesia's national emergency numbers; calls are free and need mobile signal, not internet.
-const NUMBERS: [string, string][] = [
-  ['112', 'Any emergency'],
-  ['110', 'Police'],
-  ['118', 'Ambulance'],
-  ['119', 'Medical emergencies'],
-  ['113', 'Fire brigade'],
-  ['115', 'Search and rescue (Basarnas)'],
-]
+// The international emergency number: phone networks in most countries connect 112 from a mobile
+// phone to the local emergency services. Calls are free and need mobile signal, not internet.
+const EMERGENCY_NUMBER = '112'
 
 const HELP: [HelpKind, string][] = [
   ['hospital', 'Hospital'],
@@ -92,18 +86,15 @@ export default function EmergencyPanel({ position, onLocate, onFindNearest, onCl
       </div>
 
       <section aria-labelledby="emergency-numbers">
-        <h4 id="emergency-numbers">Call for help in Indonesia</h4>
-        <ul className="sos-numbers">
-          {NUMBERS.map(([number, label]) => (
-            <li key={number}>
-              <a className="sos-call" href={`tel:${number}`}>
-                <strong>{number}</strong>
-                <span>{label}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-        <p className="muted small">Calls are free and need mobile signal, not internet. Tap a number to call it.</p>
+        <h4 id="emergency-numbers">Call for help</h4>
+        <a className="sos-call" href={`tel:${EMERGENCY_NUMBER}`}>
+          <strong>{EMERGENCY_NUMBER}</strong>
+          <span>Emergency: police, ambulance, fire</span>
+        </a>
+        <p className="muted small">
+          From a mobile phone, 112 reaches the emergency services in most countries. The call is free and needs mobile
+          signal, not internet. If it does not connect, call your country's own emergency number.
+        </p>
       </section>
 
       <section aria-labelledby="emergency-nearest">

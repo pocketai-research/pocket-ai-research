@@ -1555,15 +1555,6 @@ a.btn {
   margin: 0;
 }
 
-.sos-numbers {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 .sos-call {
   display: flex;
   flex-direction: column;
@@ -1578,7 +1569,7 @@ a.btn {
 }
 
 .sos-call strong {
-  font-size: 1.25rem;
+  font-size: 1.75rem;
   color: var(--danger);
   font-variant-numeric: tabular-nums;
 }

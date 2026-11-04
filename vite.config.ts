@@ -38,7 +38,7 @@ export default defineConfig({
         start_url: './',
         scope: './',
         display: 'standalone',
-        theme_color: '#0f766e',
+        theme_color: '#c2410c',
         background_color: '#050c14',
         // Lets the installed app appear in the phone's share sheet (handled in src/sw.js).
         share_target: {

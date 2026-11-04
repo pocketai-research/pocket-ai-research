@@ -58,7 +58,7 @@ function showOutline(map: MapLibreMap, bbox: BBox) {
     id: 'selection-outline',
     type: 'line',
     source: 'selection',
-    paint: { 'line-color': '#0f766e', 'line-width': 2, 'line-dasharray': [2, 2] },
+    paint: { 'line-color': '#c2410c', 'line-width': 2, 'line-dasharray': [2, 2] },
   })
 }
 
@@ -90,7 +90,7 @@ function showPlaces(map: MapLibreMap, places: Place[]) {
     id: 'search-results-dot',
     type: 'circle',
     source: 'search-results',
-    paint: { 'circle-radius': 11, 'circle-color': '#0f766e', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 },
+    paint: { 'circle-radius': 11, 'circle-color': '#c2410c', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 },
   })
   map.addLayer({
     id: 'search-results-rank',

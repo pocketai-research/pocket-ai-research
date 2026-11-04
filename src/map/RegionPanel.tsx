@@ -4,10 +4,11 @@ import { fetchChildren, levelName, type AdminChildren, type AdminRegion } from '
 import { COUNTRIES, type Country } from './countries'
 import { canDownload, downloadArea, planDownload, type DownloadProgress } from './download'
 import { detailLabel, type BBox } from './geo'
-import { deleteArea, type OfflineArea } from './offlineStore'
+import { deleteArea, type OfflineArea, type Trip } from './offlineStore'
 import type { Place } from './places'
 import type { Route } from './route'
 import SearchPanel, { type SearchOrigin, type SearchRequest } from './SearchPanel'
+import TripsPanel from './TripsPanel'
 import type { ReplySettings } from '../settings'
 
 interface RegionPanelProps {
@@ -27,6 +28,7 @@ interface RegionPanelProps {
   searchRequest: SearchRequest | null
   /** The emergency panel, shown in place of the search while it is open. */
   emergency: ReactNode
+  onShowTrip: (trip: Trip) => void
 }
 
 interface DownloadTarget {
@@ -42,7 +44,7 @@ const sameBBox = (a: BBox, b: BBox) => a.every((v, i) => Math.abs(v - b[i]) < 1e
 
 export default function RegionPanel(props: RegionPanelProps) {
   const { areas, viewingAreaId, online, onSelect, onViewOffline, onViewOnline, onAreasChange, visibleBBox } = props
-  const [tab, setTab] = useState<'search' | 'regions' | 'offline'>('search')
+  const [tab, setTab] = useState<'search' | 'regions' | 'offline' | 'trips'>('search')
   const [collapsed, setCollapsed] = useState(false)
   const [search, setSearch] = useState('')
   const [country, setCountry] = useState<Country | null>(null)
@@ -278,6 +280,9 @@ export default function RegionPanel(props: RegionPanelProps) {
           <button role="tab" aria-selected={tab === 'offline'} onClick={() => (setTab('offline'), setCollapsed(false))}>
             Offline ({areas.length})
           </button>
+          <button role="tab" aria-selected={tab === 'trips'} onClick={() => (setTab('trips'), setCollapsed(false))}>
+            Trips
+          </button>
         </div>
         <button
           className="icon-btn"
@@ -330,6 +335,7 @@ export default function RegionPanel(props: RegionPanelProps) {
           </div>
           {tab === 'regions' && regionsTab}
           {tab === 'offline' && offlineTab}
+          {tab === 'trips' && <TripsPanel onShowTrip={props.onShowTrip} />}
           {tab === 'regions' && online && canDownload && (
             <button
               className="btn ghost"

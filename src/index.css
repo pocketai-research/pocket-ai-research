@@ -1935,3 +1935,83 @@ a.btn {
   text-transform: uppercase;
   color: var(--accent);
 }
+
+/* Trips */
+
+.trips {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trip-start,
+.trip-live {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.trip-start p,
+.trip-live p {
+  margin: 0;
+}
+
+.trip-recording {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.trip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: trip-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes trip-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trip-dot {
+    animation: none;
+  }
+}
+
+.trip-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-self: stretch;
+  margin: 0;
+}
+
+.trip-stats div {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.trip-stats dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.trip-stats dd {
+  margin: 2px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.small-btn {
+  padding: 5px 10px;
+  font-size: 13px;
+}

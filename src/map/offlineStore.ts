@@ -23,6 +23,28 @@ export interface Favorite {
   createdAt: number
 }
 
+/** A point of a recorded trip. */
+export interface TripPoint {
+  lon: number
+  lat: number
+  /** Metres above sea level, when the GPS reports it. */
+  ele: number | null
+  time: number
+}
+
+/** A route recorded with GPS (src/map/tripRecorder.ts). */
+export interface Trip {
+  id: string
+  name: string
+  startedAt: number
+  endedAt: number
+  points: TripPoint[]
+  /** Metres along the points. */
+  distance: number
+  /** Metres climbed, from the GPS altitude. */
+  climb: number
+}
+
 interface MapsDB extends DBSchema {
   areas: { key: string; value: OfflineArea }
   /** Vector tiles, keyed "<areaId>/<z>/<x>/<y>". */
@@ -32,12 +54,13 @@ interface MapsDB extends DBSchema {
   /** Child regions from Overpass, keyed by parent OSM relation id. */
   admin: { key: number; value: AdminChildren }
   favorites: { key: string; value: Favorite }
+  trips: { key: string; value: Trip }
 }
 
 let dbPromise: Promise<IDBPDatabase<MapsDB>> | null = null
 
 function db() {
-  dbPromise ??= openDB<MapsDB>('pocket-ai-maps', 3, {
+  dbPromise ??= openDB<MapsDB>('pocket-ai-maps', 4, {
     upgrade(database, oldVersion, _newVersion, transaction) {
       if (oldVersion < 1) {
         database.createObjectStore('areas', { keyPath: 'id' })
@@ -50,6 +73,8 @@ function db() {
       }
       // Version 3 added saved places.
       if (oldVersion < 3) database.createObjectStore('favorites', { keyPath: 'id' })
+      // Version 4 added recorded trips.
+      if (oldVersion < 4) database.createObjectStore('trips', { keyPath: 'id' })
     },
   })
   return dbPromise
@@ -128,4 +153,21 @@ export async function saveFavorite(favorite: Favorite) {
 
 export async function deleteFavorite(id: string) {
   await (await db()).delete('favorites', id)
+}
+
+/** Recorded trips, newest first. */
+export async function listTrips(): Promise<Trip[]> {
+  try {
+    return (await (await db()).getAll('trips')).sort((a, b) => b.startedAt - a.startedAt)
+  } catch {
+    return []
+  }
+}
+
+export async function saveTrip(trip: Trip) {
+  await (await db()).put('trips', trip)
+}
+
+export async function deleteTrip(id: string) {
+  await (await db()).delete('trips', id)
 }

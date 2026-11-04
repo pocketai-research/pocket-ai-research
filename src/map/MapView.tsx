@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   AttributionControl,
   GeolocateControl,
@@ -14,11 +14,12 @@ import { ArrowLeftIcon } from '../icons'
 import { STYLE_URL } from './download'
 import type { BBox } from './geo'
 import { offlineStyle } from './offlineMap'
-import { listAreas, type OfflineArea } from './offlineStore'
+import { listAreas, type OfflineArea, type Trip, type TripPoint } from './offlineStore'
 import type { Place } from './places'
 import type { Route } from './route'
 import EmergencyPanel, { type HelpKind, type Position } from './EmergencyPanel'
 import RegionPanel from './RegionPanel'
+import { getRecorderState, subscribeRecorder } from './tripRecorder'
 import type { SearchOrigin, SearchRequest } from './SearchPanel'
 import type { ReplySettings } from '../settings'
 
@@ -124,6 +125,23 @@ const HELP_QUESTIONS: Record<HelpKind, string> = {
   fire: 'route to the nearest fire station',
 }
 
+/** A recorded trip as an orange line with a white casing, under the result dots. */
+function showTrack(map: MapLibreMap, points: TripPoint[]) {
+  const data = {
+    type: 'FeatureCollection' as const,
+    features:
+      points.length > 1
+        ? [{ type: 'Feature' as const, properties: {}, geometry: { type: 'LineString' as const, coordinates: points.map((p) => [p.lon, p.lat]) } }]
+        : [],
+  }
+  const source = map.getSource('trip') as GeoJSONSource | undefined
+  if (source) return source.setData(data)
+  map.addSource('trip', { type: 'geojson', data })
+  const layout = { 'line-join': 'round' as const, 'line-cap': 'round' as const }
+  map.addLayer({ id: 'trip-casing', type: 'line', source: 'trip', layout, paint: { 'line-color': '#ffffff', 'line-width': 7 } })
+  map.addLayer({ id: 'trip-line', type: 'line', source: 'trip', layout, paint: { 'line-color': '#c2410c', 'line-width': 4 } })
+}
+
 interface MapViewProps {
   onBack: () => void
   /** Whether an AI model is open, for written answers to place searches. */
@@ -142,6 +160,10 @@ export default function MapView({ onBack, ai }: MapViewProps) {
   const [position, setPosition] = useState<Position | null>(null)
   const [emergency, setEmergency] = useState(false)
   const [searchRequest, setSearchRequest] = useState<SearchRequest | null>(null)
+  // The trip being recorded, or else a saved one chosen in the Trips tab; redrawn on a new map.
+  const recorder = useSyncExternalStore(subscribeRecorder, getRecorderState)
+  const [shownTrip, setShownTrip] = useState<Trip | null>(null)
+  const [mapLoads, setMapLoads] = useState(0)
 
   const refreshAreas = () => listAreas().then(setAreas)
 
@@ -172,6 +194,7 @@ export default function MapView({ onBack, ai }: MapViewProps) {
           : { center: [110, 0], zoom: 1.5 }),
       })
       mapRef.current = map
+      map.once('load', () => setMapLoads((n) => n + 1))
       // Top-left, because the region panel covers the bottom of the map. Attribution is required.
       map.addControl(new AttributionControl({ compact: true }), 'top-left')
       map.addControl(new ScaleControl(), 'top-left')
@@ -252,6 +275,24 @@ export default function MapView({ onBack, ai }: MapViewProps) {
     return bounds ? [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()] : null
   }
 
+  const trackPoints = recorder.trip?.points ?? shownTrip?.points
+  useEffect(() => {
+    const map = mapRef.current
+    if (map) whenReady(map, () => showTrack(map, trackPoints ?? []))
+  }, [trackPoints, mapLoads])
+
+  function showTrip(trip: Trip) {
+    setShownTrip(trip)
+    const map = mapRef.current
+    if (!map || trip.points.length < 2) return
+    const lons = trip.points.map((p) => p.lon)
+    const lats = trip.points.map((p) => p.lat)
+    map.fitBounds([Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)], {
+      padding: { top: 60, left: 40, right: 60, bottom: panelHeight() + 30 },
+      maxZoom: 17,
+    })
+  }
+
   /** Starts GPS tracking, unless it is already on (trigger() would turn it off again). */
   function locate() {
     if (!positionRef.current) geolocateRef.current?.trigger()
@@ -313,6 +354,7 @@ export default function MapView({ onBack, ai }: MapViewProps) {
           onFocus={focusPlace}
           onRoute={drawRoute}
           searchRequest={searchRequest}
+          onShowTrip={showTrip}
           emergency={
             emergency && (
               <EmergencyPanel
